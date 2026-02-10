@@ -1,0 +1,22 @@
+{
+  "name": "ultimatebot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc.9",
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "google-tts-api": "^2.0.2",
+    "node-nlp": "^5.0.0-alpha.5",
+    "qrcode": "^1.5.4",
+    "sql.js": "^1.13.0"
+  }
+}
