@@ -225,18 +225,7 @@ class ChatBrain {
             }
         }
 
-        // Group messages should be short
-        if (isGroup && refined.length > 200) {
-            // Find the first 1-2 sentences
-            const sentences = refined.split(/[.!?]+/).filter(s => s.trim().length > 0);
-            if (sentences.length > 2) {
-                refined = sentences.slice(0, 2).join('. ').trim();
-                if (!refined.endsWith('.') && !refined.endsWith('!') && !refined.endsWith('?')) {
-                    refined += '.';
-                }
-                console.log(`   🔧 Self-Reflection: Trimmed group response to 2 sentences`);
-            }
-        }
+
 
         // Clean up double spaces and extra newlines
         refined = refined.replace(/\n{3,}/g, '\n\n').replace(/  +/g, ' ');

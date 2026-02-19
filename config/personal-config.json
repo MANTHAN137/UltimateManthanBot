@@ -313,8 +313,8 @@
             "start": 10,
             "end": 22
         },
-        "maxGroupReplyLength": 80,
-        "maxDMReplyLength": 500,
+        "maxGroupReplyLength": 600,
+        "maxDMReplyLength": 2000,
         "typingDelayBase": 800,
         "typingDelayPerChar": 8,
         "typingDelayMax": 5000,

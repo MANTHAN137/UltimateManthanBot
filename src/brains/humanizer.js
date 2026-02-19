@@ -184,22 +184,26 @@ class Humanizer {
      * Trim response for group context
      */
     _trimForGroup(response) {
-        const maxLen = config.intelligenceConfig.maxGroupReplyLength || 80;
+        const maxLen = config.intelligenceConfig.maxGroupReplyLength || 600;
 
         if (response.length <= maxLen) return response;
 
         // Try to find a natural break point
-        const sentences = response.split(/[.!?]+/).filter(s => s.trim());
-        if (sentences.length > 0) {
-            let grouped = sentences[0].trim();
-            // Add second sentence if it fits
-            if (sentences.length > 1 && (grouped + '. ' + sentences[1].trim()).length <= maxLen * 1.5) {
-                grouped += '. ' + sentences[1].trim();
+        const sentences = response.match(/[^.!?]+[.!?]+(\s|$)/g) || [response];
+        let grouped = '';
+
+        for (const sentence of sentences) {
+            if ((grouped + sentence).length > maxLen) {
+                // If we have at least one sentence, stop here. 
+                // Otherwise (first sentence is huge), take it but truncate hard later if needed.
+                if (grouped.length > 0) break;
             }
-            return grouped;
+            grouped += sentence;
         }
 
-        // Hard truncate as last resort
+        if (grouped.length > 0) return grouped.trim();
+
+        // Hard truncate as last resort if sentence splitting failed
         return response.substring(0, maxLen).trim() + '...';
     }
 }
