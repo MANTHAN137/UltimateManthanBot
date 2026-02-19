@@ -23,7 +23,7 @@ class ChatBrain {
      * Generate AI response with full context
      */
     async process(contactId, message, context = {}) {
-        const { isGroup, intent, emotion, personMemory, isNewContact, conversationRecap, abOverrides } = context;
+        const { isGroup, intent, emotion, personMemory, isNewContact, conversationRecap, abOverrides, quotedText } = context;
 
         // Build the system prompt with all context
         const systemPrompt = this._buildPrompt(context);
@@ -99,7 +99,7 @@ class ChatBrain {
      * Build the full system prompt with context
      */
     _buildPrompt(context) {
-        const { isGroup, intent, emotion, personMemory, isNewContact, conversationRecap, abOverrides } = context;
+        const { isGroup, intent, emotion, personMemory, isNewContact, conversationRecap, abOverrides, quotedText } = context;
 
         // Context notes for the LLM
         let contextNote = '';
@@ -121,6 +121,11 @@ class ChatBrain {
         // A/B test: follow-up question instruction
         if (abOverrides?.askFollowup) {
             contextNote += '\nIMPORTANT: End your response with a natural follow-up question to keep the conversation going.\n';
+        }
+
+        // Quoted/reply message context
+        if (quotedText) {
+            contextNote += `\nTHE USER IS REPLYING TO THIS PREVIOUS MESSAGE: "${quotedText}"\nMake sure your reply is contextually relevant to what they're replying to.\n`;
         }
 
         // Safety rules from memory

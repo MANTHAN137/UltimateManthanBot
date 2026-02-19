@@ -19,6 +19,11 @@ const musicBrain = require('./music-brain');
 const translateBrain = require('./translate-brain');
 const gamesBrain = require('./games-brain');
 const financeBrain = require('./finance-brain');
+const newsBrain = require('./news-brain');
+const jokeBrain = require('./joke-brain');
+const visionBrain = require('./vision-brain');
+const memeBrain = require('./meme-brain');
+const todoBrain = require('./todo-brain');
 const humanizer = require('./humanizer');
 const summarizer = require('../engines/summarizer');
 const abTesting = require('../engines/ab-testing');
@@ -29,7 +34,7 @@ class BrainRouter {
     constructor() {
         this._lastMessageTime = new Map();
 
-        console.log('🧠 Brain Router v5.0 initialized with Multi-Brain Architecture');
+        console.log('🧠 Brain Router v6.0 initialized with Multi-Brain Architecture');
         console.log('   ├─ 💬 Chat Brain (Gemini AI)');
         console.log('   ├─ 📚 Knowledge Brain (NLP + KB)');
         console.log('   ├─ 🔍 Search Brain (DuckDuckGo)');
@@ -39,6 +44,10 @@ class BrainRouter {
         console.log('   ├─ 🌐 Translation Brain (Gemini)');
         console.log('   ├─ 🎮 Games Brain');
         console.log('   ├─ 💰 Finance Brain (CoinGecko)');
+        console.log('   ├─ 📰 News Brain (Google News)');
+        console.log('   ├─ 😂 Joke Brain (JokeAPI)');
+        console.log('   ├─ 👁️ Vision Brain (Gemini Vision)');
+        console.log('   ├─ 🖼️ Meme Brain (Reddit)');
         console.log('   ├─ 🤝 Social Brain');
         console.log('   ├─ 🛡️ Safety Brain');
         console.log('   ├─ ⏰ Reminder Engine');
@@ -61,9 +70,36 @@ class BrainRouter {
      * 9. Store + return
      */
     async process(contactId, message, options = {}) {
-        const { isGroup = false, phoneNumber = '', voiceRequest = false } = options;
+        const { isGroup = false, phoneNumber = '', voiceRequest = false, imageBuffer = null, imageCaption = '', quotedText = '' } = options;
 
         const startTime = Date.now();
+
+        // ═══ IMAGE PROCESSING (highest priority) ═══
+        if (imageBuffer) {
+            console.log(`   👁️ Image message detected (${(imageBuffer.length / 1024).toFixed(1)}KB)`);
+            try {
+                const result = await visionBrain.process(imageBuffer, imageCaption || message, { isGroup, contactId });
+                if (result && result.response) {
+                    // Safety filter
+                    result.response = safetyBrain.filter(result.response, imageCaption || 'image', { primary: 'image_analysis' });
+                    // Humanize
+                    result.response = humanizer.humanize(result.response, {
+                        isGroup,
+                        timeContext: config.getTimeContext()
+                    });
+                    result.typingDelay = humanizer.getTypingDelay(result.response, { isGroup, timeContext: config.getTimeContext() });
+                    // Store
+                    memoryStore.addConversationMessage(contactId, 'user', `[image] ${imageCaption || ''}`, { isGroup });
+                    memoryStore.addConversationMessage(contactId, 'assistant', result.response, { isGroup });
+                    // Analytics
+                    const processingTime = Date.now() - startTime;
+                    analyticsEngine.record({ contactId, intent: 'image_analysis', brain: 'vision', responseTime: processingTime, isGroup });
+                    return { ...result, processingTime, intent: { primary: 'image_analysis' } };
+                }
+            } catch (error) {
+                console.error(`   ❌ Vision Brain error: ${error.message}`);
+            }
+        }
 
         // ═══ STEP 0: A/B Engagement Tracking ═══
         // If user replied to a previous bot message, that's engagement data
@@ -133,6 +169,40 @@ class BrainRouter {
                     result = reminderEngine.process(message, contactId);
                     break;
 
+                case 'news':
+                    result = await newsBrain.process(message, isGroup);
+                    break;
+
+                case 'joke':
+                    result = await jokeBrain.process(message, isGroup);
+                    break;
+
+                case 'todo':
+                    result = await todoBrain.process(message, contactId);
+                    break;
+
+                case 'meme':
+                    result = await memeBrain.process(message, isGroup);
+                    break;
+
+                case 'summarize': {
+                    const summary = await summarizer.summarize(contactId);
+                    if (summary && summary.summary) {
+                        result = {
+                            response: `📝 *Chat Summary*\n━━━━━━━━━━━━━━━━━━━━\n\n${summary.summary}\n\n📊 _${summary.messageCount} messages analyzed_${summary.keyTopics?.length ? '\n🏷️ Topics: ' + summary.keyTopics.join(', ') : ''}`,
+                            source: 'summarizer',
+                            isQuickResponse: false
+                        };
+                    } else {
+                        result = {
+                            response: "not enough chat history to summarize yet 🤷‍♂️ keep chatting and I'll be able to give you a recap",
+                            source: 'summarizer/empty',
+                            isQuickResponse: true
+                        };
+                    }
+                    break;
+                }
+
                 case 'link':
                     result = await linkBrain.process(message, isGroup);
                     if (!result) {
@@ -199,7 +269,7 @@ class BrainRouter {
                 default:
                     result = await chatBrain.process(contactId, message, {
                         isGroup, intent, emotion, personMemory, isNewContact,
-                        conversationRecap, abOverrides
+                        conversationRecap, abOverrides, quotedText
                     });
                     break;
             }
@@ -288,6 +358,11 @@ class BrainRouter {
             return { brain: 'social', reason: 'spam detected' };
         }
 
+        // Todo / task list requests (check before reminder since patterns overlap)
+        if (todoBrain.isTodoRequest(message)) {
+            return { brain: 'todo', reason: 'todo request' };
+        }
+
         // Reminder requests
         if (reminderEngine.isReminderRequest(message)) {
             return { brain: 'reminder', reason: 'reminder request' };
@@ -306,6 +381,26 @@ class BrainRouter {
         // Finance/crypto/stock requests
         if (financeBrain.isFinanceRequest(message)) {
             return { brain: 'finance', reason: 'finance request' };
+        }
+
+        // News requests
+        if (newsBrain.isNewsRequest(message)) {
+            return { brain: 'news', reason: 'news request' };
+        }
+
+        // Joke requests
+        if (jokeBrain.isJokeRequest(message)) {
+            return { brain: 'joke', reason: 'joke request' };
+        }
+
+        // Meme requests
+        if (memeBrain.isMemeRequest(message)) {
+            return { brain: 'meme', reason: 'meme request' };
+        }
+
+        // Summarize requests
+        if (this._isSummarizeRequest(message)) {
+            return { brain: 'summarize', reason: 'summary request' };
         }
 
         // Music requests (before YouTube to catch song-specific queries)
@@ -347,6 +442,14 @@ class BrainRouter {
 
         // Everything else → Chat Brain (LLM)
         return { brain: 'chat', reason: 'general conversation' };
+    }
+
+    /**
+     * Check if message is a summarize/recap request
+     */
+    _isSummarizeRequest(message) {
+        const msg = message.toLowerCase();
+        return /\b(summarize|summary|summarise|recap|tldr|tl;dr|what did we talk about|chat summary|conversation summary|sum up)\b/i.test(msg);
     }
 
     /**

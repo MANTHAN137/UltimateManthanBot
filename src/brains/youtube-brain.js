@@ -10,6 +10,8 @@
  * - Detect YouTube-related queries
  */
 
+const formatter = require('../engines/formatter');
+
 class YouTubeBrain {
     constructor() {
         this.apiKey = process.env.YOUTUBE_API_KEY || null;
@@ -166,27 +168,7 @@ class YouTubeBrain {
      * Format results for WhatsApp message
      */
     _formatResults(videos, query, isGroup) {
-        if (videos.length === 0) return null;
-
-        if (isGroup) {
-            // Just top result for groups
-            const top = videos[0];
-            return `🎬 ${top.title}\n${top.url}`;
-        }
-
-        // DM: Show top 3 with details
-        let response = `found some vids for "${query}" 🎬\n`;
-
-        const topVideos = videos.slice(0, 3);
-        topVideos.forEach((v, i) => {
-            response += `\n${i + 1}. *${this._decodeHtml(v.title)}*`;
-            if (v.channel) response += `\n   📺 ${v.channel}`;
-            if (v.duration) response += ` | ⏱️ ${v.duration}`;
-            if (v.views) response += ` | 👁️ ${this._formatViews(v.views)}`;
-            response += `\n   ▶️ ${v.url}\n`;
-        });
-
-        return response.trim();
+        return formatter.formatYouTubeResults(videos, query, isGroup);
     }
 
     /**

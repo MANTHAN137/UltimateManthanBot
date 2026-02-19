@@ -17,7 +17,7 @@
  * Version: 4.1.0
  */
 
-const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, downloadMediaMessage } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
 const express = require('express');
 const fs = require('fs');
@@ -136,6 +136,25 @@ function getMessageText(msg) {
     if (msg.message.imageMessage?.caption) return msg.message.imageMessage.caption;
     if (msg.message.videoMessage?.caption) return msg.message.videoMessage.caption;
     return null;
+}
+
+function hasImageMessage(msg) {
+    if (!msg.message) return false;
+    return !!(msg.message.imageMessage);
+}
+
+function getQuotedText(msg) {
+    const contextInfo = msg.message?.extendedTextMessage?.contextInfo ||
+        msg.message?.imageMessage?.contextInfo;
+    if (!contextInfo?.quotedMessage) return '';
+    const qm = contextInfo.quotedMessage;
+    return qm.conversation || qm.extendedTextMessage?.text || qm.imageMessage?.caption || '';
+}
+
+function stripBotMention(text) {
+    if (!text) return text;
+    // Remove @bot / @Bot prefix and clean up
+    return text.replace(/^@bot\s*/i, '').trim();
 }
 
 function formatPhoneNumber(jid) {
@@ -312,7 +331,7 @@ async function startBot() {
             reminderEngine.setSocket(sock); // Wire up reminders
             console.log('');
             console.log('╔══════════════════════════════════════════════════════════════╗');
-            console.log(`║  ✅ ${botName}'s Brain v5.0 is ONLINE!                       ║`);
+            console.log(`║  ✅ ${botName}'s Brain v6.0 is ONLINE!                       ║`);
             console.log('╠══════════════════════════════════════════════════════════════╣');
             console.log('║  BRAINS                        ENGINES                      ║');
             console.log('║  💬 Chat (Gemini AI)           🎤 Voice (Google TTS)        ║');
@@ -363,7 +382,11 @@ async function startBot() {
 
                 const isNameMentioned = messageText && /manthan|@manthan|@bot/i.test(messageText);
 
-                if (!isMentioned && !isQuoted && !isNameMentioned) {
+                // Also respond to image messages with @bot mention or in reply to bot
+                const hasImage = hasImageMessage(msg);
+                const imageHasBotMention = hasImage && msg.message?.imageMessage?.caption && /manthan|@bot/i.test(msg.message.imageMessage.caption);
+
+                if (!isMentioned && !isQuoted && !isNameMentioned && !imageHasBotMention) {
                     continue;
                 }
 
@@ -438,14 +461,24 @@ async function startBot() {
             }
 
             // ════════════════════════════════════
-            // INCOMING MESSAGE
+            // INCOMING MESSAGE (text or image)
             // ════════════════════════════════════
-            const messageText = getMessageText(msg);
-            if (!messageText || messageText.trim() === '') continue;
+            let messageText = getMessageText(msg);
+            const hasImage = hasImageMessage(msg);
+            const quotedText = getQuotedText(msg);
+
+            // Skip if no text AND no image
+            if ((!messageText || messageText.trim() === '') && !hasImage) continue;
+
+            // Strip @bot prefix from message
+            if (messageText) {
+                messageText = stripBotMention(messageText);
+            }
 
             const phoneNumber = formatPhoneNumber(sender);
             console.log('');
-            console.log(`${isGroup ? '👥' : '📩'} ${phoneNumber}: ${messageText}`);
+            console.log(`${isGroup ? '👥' : '📩'} ${phoneNumber}: ${hasImage ? '📷 [image]' : ''} ${messageText || ''}`);
+            if (quotedText) console.log(`   ↩️ Replying to: ${quotedText.substring(0, 60)}...`);
 
             // Check owner takeover — always active, 30s silence
             const TAKEOVER_MS = 30000;
@@ -478,10 +511,25 @@ async function startBot() {
                 // ═══════════════════════════════════
                 // FULL INTELLIGENCE PIPELINE
                 // ═══════════════════════════════════
-                const result = await brainRouter.process(sender, messageText, {
+
+                // Download image if present
+                let imageBuffer = null;
+                if (hasImage) {
+                    try {
+                        imageBuffer = await downloadMediaMessage(msg, 'buffer', {});
+                        console.log(`   📷 Image downloaded (${(imageBuffer.length / 1024).toFixed(1)}KB)`);
+                    } catch (dlErr) {
+                        console.error(`   ❌ Image download failed: ${dlErr.message}`);
+                    }
+                }
+
+                const result = await brainRouter.process(sender, messageText || '', {
                     isGroup,
                     phoneNumber,
-                    voiceRequest: wantsVoice
+                    voiceRequest: wantsVoice,
+                    imageBuffer,
+                    imageCaption: hasImage ? (messageText || '') : '',
+                    quotedText
                 });
 
                 if (!result || !result.response) {
@@ -498,6 +546,40 @@ async function startBot() {
                     { text: result.response },
                     isGroup ? { quoted: msg } : undefined
                 );
+
+                // Send meme image if this is a meme result
+                if (result.isMeme && result.imageUrl) {
+                    try {
+                        const memeResp = await fetch(result.imageUrl, { signal: AbortSignal.timeout(15000) });
+                        const memeBuffer = Buffer.from(await memeResp.arrayBuffer());
+                        await sock.sendMessage(
+                            sender,
+                            { image: memeBuffer, caption: result.response || '😂' },
+                            isGroup ? { quoted: msg } : undefined
+                        );
+                        console.log(`   🖼️ Meme sent (${(memeBuffer.length / 1024).toFixed(1)}KB)`);
+                    } catch (memeErr) {
+                        console.error(`   ⚠️ Meme image send failed: ${memeErr.message}`);
+                    }
+                }
+
+                // Send song audio if music-brain downloaded it
+                if (result.hasAudio && result.audioBuffer) {
+                    try {
+                        await sock.sendMessage(
+                            sender,
+                            {
+                                audio: result.audioBuffer,
+                                mimetype: result.audioMimetype || 'audio/mpeg',
+                                ptt: false // Not a voice note, it's a song
+                            },
+                            isGroup ? { quoted: msg } : undefined
+                        );
+                        console.log(`   🎵 Song audio sent (${(result.audioBuffer.length / 1024 / 1024).toFixed(2)}MB)`);
+                    } catch (audioErr) {
+                        console.error(`   ⚠️ Song audio send failed: ${audioErr.message}`);
+                    }
+                }
 
                 // Send voice note if requested
                 if (wantsVoice && result.response) {

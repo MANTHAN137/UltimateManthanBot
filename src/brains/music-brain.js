@@ -1,9 +1,11 @@
 /**
- * Music Brain v2.0
+ * Music Brain v3.0
  * Detects music queries, searches for the actual song via Invidious/YouTube,
- * and returns a direct link + platform search links
+ * downloads audio and sends it as WhatsApp audio message
  * No API key needed — uses Invidious (free YouTube API alternative)
  */
+
+const songDownloader = require('../engines/song-downloader');
 
 class MusicBrain {
     constructor() {
@@ -46,7 +48,7 @@ class MusicBrain {
         // Check cache
         const cached = this._getCache(query);
         if (cached) {
-            console.log(`   🎵 Music: Cache hit for "${query}"`);
+            console.log(`   \u{1F3B5} Music: Cache hit for "${query}"`);
             return cached;
         }
 
@@ -60,6 +62,25 @@ class MusicBrain {
                     source: 'music-brain',
                     isQuickResponse: true
                 };
+
+                // Download audio for the top result
+                const topSong = song[0];
+                if (topSong && topSong.url) {
+                    console.log(`   \u{1F3B5} Attempting audio download for: ${topSong.title}`);
+                    try {
+                        const audioResult = await songDownloader.downloadAudio(topSong.url);
+                        if (audioResult && audioResult.buffer) {
+                            result.audioBuffer = audioResult.buffer;
+                            result.audioMimetype = audioResult.mimetype || 'audio/mpeg';
+                            result.audioFilename = audioResult.filename || `${query}.mp3`;
+                            result.hasAudio = true;
+                            console.log(`   \u{1F3B5} Audio ready: ${(audioResult.buffer.length / 1024 / 1024).toFixed(2)}MB`);
+                        }
+                    } catch (dlErr) {
+                        console.error(`   \u26A0\uFE0F Audio download failed: ${dlErr.message}`);
+                    }
+                }
+
                 this._setCache(query, result);
                 return result;
             }
@@ -68,7 +89,7 @@ class MusicBrain {
             return this._fallbackLinks(query, isGroup);
 
         } catch (error) {
-            console.error('   ❌ Music Brain error:', error.message);
+            console.error('   \u274C Music Brain error:', error.message);
             return this._fallbackLinks(query, isGroup);
         }
     }

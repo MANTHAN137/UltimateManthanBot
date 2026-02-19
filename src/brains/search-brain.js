@@ -10,6 +10,7 @@
  */
 
 const config = require('../utils/config-loader');
+const formatter = require('../engines/formatter');
 
 class SearchBrain {
     constructor() {
@@ -236,61 +237,14 @@ class SearchBrain {
      * Format instant answer for WhatsApp
      */
     _formatInstantAnswer(result, isGroup) {
-        if (isGroup) {
-            // Short version for groups
-            const text = result.text.length > 150
-                ? result.text.substring(0, 147) + '...'
-                : result.text;
-            return `${text}`;
-        }
-
-        let response = '';
-
-        if (result.type === 'answer') {
-            response = `${result.text}`;
-        } else if (result.type === 'definition') {
-            response = `*${result.title}*\n${result.text}`;
-        } else {
-            response = result.text;
-            if (result.text.length > 300) {
-                response = result.text.substring(0, 297) + '...';
-            }
-        }
-
-        if (result.url) {
-            response += `\n\n🔗 ${result.url}`;
-        }
-
-        return response;
+        return formatter.formatInstantAnswer(result, isGroup);
     }
 
     /**
      * Format web search results for WhatsApp
      */
     _formatSearchResults(results, query, isGroup) {
-        if (results.length === 0) return null;
-
-        if (isGroup) {
-            // Just the top result for groups
-            const top = results[0];
-            return `${top.snippet}${top.url ? '\n🔗 ' + top.url : ''}`;
-        }
-
-        // DM: Show top 3 results
-        let response = `here's what i found for "${query}":\n`;
-
-        const topResults = results.slice(0, 3);
-        topResults.forEach((r, i) => {
-            response += `\n${i + 1}. ${r.title ? '*' + r.title + '*\n' : ''}${r.snippet}`;
-            if (r.url) response += `\n🔗 ${r.url}`;
-            response += '\n';
-        });
-
-        // Always add a Google link for more results
-        const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-        response += `\n🔍 More results: ${googleUrl}`;
-
-        return response.trim();
+        return formatter.formatSearchResults(results, query, isGroup);
     }
 
     /**
