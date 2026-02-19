@@ -388,10 +388,19 @@ async function startBot() {
                 const userJid = sock.user?.id || state.creds.me?.id;
                 const botJid = userJid ? userJid.split(':')[0] + '@s.whatsapp.net' : null;
 
-                const contextInfo = msg.message?.extendedTextMessage?.contextInfo;
+                // Get contextInfo from ANY message type (not just extendedTextMessage)
+                const contextInfo = msg.message?.extendedTextMessage?.contextInfo
+                    || msg.message?.imageMessage?.contextInfo
+                    || msg.message?.videoMessage?.contextInfo
+                    || msg.message?.conversation?.contextInfo
+                    || msg.message?.ephemeralMessage?.message?.extendedTextMessage?.contextInfo
+                    || msg.message?.ephemeralMessage?.message?.imageMessage?.contextInfo
+                    || null;
+
                 const mentions = contextInfo?.mentionedJid || [];
                 const isMentioned = botJid ? mentions.includes(botJid) : false;
 
+                // Check if someone is replying to the bot's message
                 const quotedParticipant = contextInfo?.participant;
                 const isQuoted = botJid ? quotedParticipant === botJid : false;
 
@@ -406,7 +415,7 @@ async function startBot() {
                     continue;
                 }
 
-                console.log(`\n🔔 Group mention/quote detected!`);
+                console.log(`\n🔔 Group ${isQuoted ? 'reply-to-bot' : isMentioned ? 'mention' : isNameMentioned ? 'name mention' : 'image mention'} detected!`);
             }
 
             // ════════════════════════════════════
