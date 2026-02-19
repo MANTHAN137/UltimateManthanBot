@@ -155,14 +155,14 @@ class ChatBrain {
         const genConfig = {
             temperature: 0.8,
             topP: 0.9,
-            maxOutputTokens: 256
+            maxOutputTokens: 800
         };
 
         // Group: shorter replies
         if (isGroup) {
             genConfig.maxOutputTokens = Math.min(
-                intelligenceConfig.maxGroupReplyLength || 80,
-                128
+                intelligenceConfig.maxGroupReplyLength || 400,
+                512
             );
             genConfig.temperature = 0.75;
         }
@@ -176,7 +176,7 @@ class ChatBrain {
         // Knowledge questions: more factual
         if (['about_inquiry', 'work_inquiry', 'tech_inquiry'].includes(intent?.primary)) {
             genConfig.temperature = 0.5;
-            genConfig.maxOutputTokens = 300;
+            genConfig.maxOutputTokens = 1000;
         }
 
         // Casual chat: more creative

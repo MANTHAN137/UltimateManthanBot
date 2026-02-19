@@ -135,12 +135,27 @@ function getMessageText(msg) {
     if (msg.message.extendedTextMessage?.text) return msg.message.extendedTextMessage.text;
     if (msg.message.imageMessage?.caption) return msg.message.imageMessage.caption;
     if (msg.message.videoMessage?.caption) return msg.message.videoMessage.caption;
+    // Forwarded / ephemeral wrapped messages
+    const wrapped = msg.message.ephemeralMessage?.message || msg.message.viewOnceMessage?.message || msg.message.viewOnceMessageV2?.message;
+    if (wrapped) {
+        if (wrapped.conversation) return wrapped.conversation;
+        if (wrapped.extendedTextMessage?.text) return wrapped.extendedTextMessage.text;
+        if (wrapped.imageMessage?.caption) return wrapped.imageMessage.caption;
+        if (wrapped.videoMessage?.caption) return wrapped.videoMessage.caption;
+    }
     return null;
 }
 
 function hasImageMessage(msg) {
     if (!msg.message) return false;
-    return !!(msg.message.imageMessage);
+    // Direct image
+    if (msg.message.imageMessage) return true;
+    // Forwarded / ephemeral wrapped image
+    if (msg.message.ephemeralMessage?.message?.imageMessage) return true;
+    if (msg.message.viewOnceMessage?.message?.imageMessage) return true;
+    if (msg.message.viewOnceMessageV2?.message?.imageMessage) return true;
+    if (msg.message.documentWithCaptionMessage?.message?.imageMessage) return true;
+    return false;
 }
 
 function getQuotedText(msg) {
@@ -384,7 +399,8 @@ async function startBot() {
 
                 // Also respond to image messages with @bot mention or in reply to bot
                 const hasImage = hasImageMessage(msg);
-                const imageHasBotMention = hasImage && msg.message?.imageMessage?.caption && /manthan|@bot/i.test(msg.message.imageMessage.caption);
+                const imageCaption = hasImage ? getMessageText(msg) : '';
+                const imageHasBotMention = hasImage && imageCaption && /manthan|@bot/i.test(imageCaption);
 
                 if (!isMentioned && !isQuoted && !isNameMentioned && !imageHasBotMention) {
                     continue;
