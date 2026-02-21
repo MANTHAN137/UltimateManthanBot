@@ -239,8 +239,14 @@ class Formatter {
      */
     _cleanUrl(url) {
         if (!url) return '';
+        let target = url;
+        if (target.startsWith('//')) target = 'https:' + target;
+
         try {
-            const u = new URL(url);
+            const u = new URL(target);
+
+            // Skip cleaning for DDG internal redirects that we might have missed
+            if (u.pathname.includes('/y.js')) return url;
 
             // Keep youtube video IDs
             if (u.hostname.includes('youtube.com') && u.searchParams.has('v')) {

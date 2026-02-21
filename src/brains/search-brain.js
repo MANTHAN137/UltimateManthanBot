@@ -209,11 +209,21 @@ class SearchBrain {
 
         let match;
         while ((match = resultPattern.exec(html)) !== null && results.length < 5) {
-            const url = this._decodeRedirectUrl(match[1]);
+            let url = match[1];
+
+            // Skip DuckDuckGo ads (/y.js?...)
+            if (url.includes('/y.js')) continue;
+
+            // Handle protocol-relative URLs
+            if (url.startsWith('//')) url = 'https:' + url;
+
+            // Decode internal DDG redirects
+            url = this._decodeRedirectUrl(url);
+
             const title = this._stripHtml(match[2]);
             const snippet = this._stripHtml(match[3]);
 
-            if (title && snippet) {
+            if (title && snippet && url.startsWith('http')) {
                 results.push({ title, snippet, url });
             }
         }
