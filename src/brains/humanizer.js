@@ -41,14 +41,8 @@ class Humanizer {
             humanized = this._adjustForTime(humanized, timeContext);
         }
 
-        // 3. Group-specific trimming (only if way too long)
-        if (isGroup) {
-            humanized = this._trimForGroup(humanized);
-        }
-
-        // NOTE: We do NOT match person's communication style anymore.
-        // The system prompt already tells the model to match the person's vibe.
-        // Post-processing style matching was causing truncation and loss of content.
+        // 3. Random human imperfections
+        humanized = this._randomImperfections(humanized);
 
         return humanized;
     }
@@ -137,30 +131,28 @@ class Humanizer {
     }
 
     /**
-     * Trim response for group context
+     * Add subtle human-like imperfections
+     * This is the secret sauce to making it feel "real"
      */
-    _trimForGroup(response) {
-        const maxLen = config.intelligenceConfig.maxGroupReplyLength || 600;
+    _randomImperfections(response) {
+        let text = response;
 
-        if (response.length <= maxLen) return response;
-
-        // Try to find a natural break point
-        const sentences = response.match(/[^.!?]+[.!?]+(\s|$)/g) || [response];
-        let grouped = '';
-
-        for (const sentence of sentences) {
-            if ((grouped + sentence).length > maxLen) {
-                // If we have at least one sentence, stop here. 
-                // Otherwise (first sentence is huge), take it but truncate hard later if needed.
-                if (grouped.length > 0) break;
-            }
-            grouped += sentence;
+        // 1. Lowercase conversion (30% chance for shorter messages)
+        if (text.length < 200 && Math.random() < 0.3) {
+            text = text.toLowerCase();
         }
 
-        if (grouped.length > 0) return grouped.trim();
+        // 2. Remove trailing periods (50% chance) - very common in modern texting
+        if (text.endsWith('.') && !text.endsWith('..') && Math.random() < 0.5) {
+            text = text.slice(0, -1);
+        }
 
-        // Hard truncate as last resort if sentence splitting failed
-        return response.substring(0, maxLen).trim() + '...';
+        // 3. Swap triple period for double period occasionally
+        if (Math.random() < 0.2) {
+            text = text.replace(/\.\.\./g, '..');
+        }
+
+        return text;
     }
 }
 

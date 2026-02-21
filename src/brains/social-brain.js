@@ -93,79 +93,12 @@ class SocialBrain {
             };
         }
 
-        // ─── Greeting ─────────────────
-        if (intent.primary === 'greeting') {
-            const timeContext = config.getTimeContext();
-
-            if (timeContext.isLateNight) {
-                return {
-                    response: this._getRandomFrom([
-                        "hey! you're up late too huh 😅",
-                        "ayy still awake? what's up?",
-                        "late night gang 🌙 wassup?"
-                    ]),
-                    source: 'social-brain/greeting-night',
-                    isQuickResponse: true
-                };
-            }
-
-            if (timeContext.period === 'morning' && /morning/.test(msg)) {
-                return {
-                    response: this._getRandomFrom([
-                        "good morning! ☀️ what's the plan today?",
-                        "morning! ✨ how's it going?",
-                        "gm gm! 🌅"
-                    ]),
-                    source: 'social-brain/greeting-morning',
-                    isQuickResponse: true
-                };
-            }
-
-            // Group greetings are shorter
-            if (isGroup) {
-                return {
-                    response: this._getRandomFrom(["yo! 🤙", "hey! 👋", "sup!", "heyy"]),
-                    source: 'social-brain/greeting-group',
-                    isQuickResponse: true
-                };
-            }
-
-            return {
-                response: this._getRandomFrom(this.greetingVariants),
-                source: 'social-brain/greeting',
-                isQuickResponse: true
-            };
-        }
-
-        // ─── Farewell ─────────────────
-        if (intent.primary === 'farewell') {
-            if (/night|goodnight/.test(msg)) {
-                return {
-                    response: this._getRandomFrom([
-                        "goodnight! 🌙 sleep well",
-                        "night night! 🌃",
-                        "gn! rest well 💤"
-                    ]),
-                    source: 'social-brain/farewell-night',
-                    isQuickResponse: true
-                };
-            }
-
-            return {
-                response: this._getRandomFrom(this.farewellVariants),
-                source: 'social-brain/farewell',
-                isQuickResponse: true
-            };
-        }
-
-        // ─── Thanks ───────────────────
-        if (intent.primary === 'thanks') {
-            return {
-                response: this._getRandomFrom(this.thanksVariants),
-                source: 'social-brain/thanks',
-                isQuickResponse: true
-            };
-        }
+        /* 
+         * DISABLED: Let ChatBrain handle these for maximum realism
+         * ─── Greeting ─────────────────
+         * ─── Farewell ─────────────────
+         * ─── Thanks ───────────────────
+         */
 
         // ─── Human Request ────────────
         if (intent.primary === 'human_request') {

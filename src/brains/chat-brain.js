@@ -32,7 +32,7 @@ class ChatBrain {
         const systemPrompt = this._buildPrompt(context);
 
         // Get conversation history from memory — more history = better context
-        const history = memoryStore.getFormattedHistory(contactId, isGroup ? 8 : 15);
+        const history = memoryStore.getFormattedHistory(contactId, isGroup ? 12 : 25);
 
         // Prepare the current message part
         const currentMessageParts = [];
@@ -193,18 +193,18 @@ class ChatBrain {
     _getGenerationConfig(isGroup, intent, emotion, abOverrides = {}) {
         const intelligenceConfig = config.intelligenceConfig;
 
-        // Base config — generous defaults, model decides natural length
+        // Base config — maximum creativity, model decides natural length
         const genConfig = {
-            temperature: 0.9,     // High creativity for natural conversation
-            topP: 0.95,           // Wide sampling for diverse responses
-            topK: 40,             // Good balance of diversity
+            temperature: 1.0,     // Maxed creativity for deep conversation
+            topP: 0.99,            // Near-total freedom
+            topK: 60,             // More diverse vocabulary
             maxOutputTokens: intelligenceConfig.maxDMReplyLength || 2048  // Let the model decide length naturally
         };
 
         // Group: still generous but slightly lower ceiling
         if (isGroup) {
-            genConfig.maxOutputTokens = intelligenceConfig.maxGroupReplyLength || 800;
-            genConfig.temperature = 0.85;  // Slightly less random in groups
+            genConfig.maxOutputTokens = intelligenceConfig.maxGroupReplyLength || 1200;
+            genConfig.temperature = 0.95;  // Keep it High!
         }
 
         // Emotional messages: warm and thoughtful, not robotic
@@ -250,22 +250,21 @@ class ChatBrain {
 
         // Only catch BLATANT AI identity reveals (the obvious ones)
         const blatantLeaks = [
-            /\bAs an AI\b/gi,
-            /\bI am an AI\b/gi,
-            /\bI'm an AI\b/gi,
-            /\bI am a language model\b/gi,
-            /\bI'm a language model\b/gi,
-            /\bas a large language model\b/gi,
+            /\bAs (an AI|a bot|a chatbot|a language model|Manthan)\b/gi,
+            /\bI am (an AI|a bot|a chatbot|a language model|Manthan)\b/gi,
+            /\bBeing Manthan\b/gi,
+            /\bIn my role as\b/gi,
+            /\bI'm here to help\b/gi,
+            /\bHow can I assist you\b/gi,
             /\bI was trained by\b/gi,
-            /\bI am a chatbot\b/gi,
-            /\bI'm a chatbot\b/gi
+            /\bI don't have feelings\b/gi
         ];
 
         for (const pattern of blatantLeaks) {
             if (pattern.test(cleaned)) {
-                // Remove just the sentence containing the leak
-                cleaned = cleaned.replace(new RegExp(`[^.!?\n]*${pattern.source}[^.!?\n]*[.!?]?\\s*`, 'gi'), '').trim();
-                console.log(`   🔧 Removed AI identity leak`);
+                // Remove the sentence containing the leak
+                cleaned = cleaned.replace(new RegExp(`[^.!?\n]*${pattern.source}[?.]?\\s*`, 'gi'), '').trim();
+                console.log(`   🔧 Removed AI phrase: ${pattern.source}`);
             }
         }
 
