@@ -28,19 +28,19 @@ class ABTestEngine {
                 }
             },
             response_length: {
-                name: 'Response Length',
+                name: 'Response Length (Min Cap)',
                 variants: {
-                    A: { maxTokens: 128, description: 'Short (128 tokens)' },
-                    B: { maxTokens: 256, description: 'Medium (256 tokens)' },
-                    C: { maxTokens: 384, description: 'Longer (384 tokens)' }
+                    A: { maxTokens: 800, description: 'Normal (800 tokens)' },
+                    B: { maxTokens: 1500, description: 'Long (1500 tokens)' },
+                    C: { maxTokens: 2048, description: 'Full Freedom (2048 tokens)' }
                 }
             },
             temperature: {
                 name: 'AI Temperature (Creativity)',
                 variants: {
-                    A: { temp: 0.6, description: 'Conservative (0.6)' },
-                    B: { temp: 0.8, description: 'Balanced (0.8)' },
-                    C: { temp: 1.0, description: 'Creative (1.0)' }
+                    A: { temp: 0.85, description: 'Balanced (0.85)' },
+                    B: { temp: 0.9, description: 'Creative (0.9)' },
+                    C: { temp: 0.95, description: 'High Energy (0.95)' }
                 }
             },
             emoji_usage: {

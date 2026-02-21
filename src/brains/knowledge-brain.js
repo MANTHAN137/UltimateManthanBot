@@ -109,10 +109,12 @@ class KnowledgeBrain {
 
     /**
      * Process a message through knowledge brain
-     * Returns response only if confidence is high enough
+     * Returns response only if confidence is VERY HIGH
+     * For most messages, we let the AI handle it naturally since
+     * the system prompt already has all of Manthan's info
      */
     async process(message, intent) {
-        // Method 1: Keyword-based KB matching (fast)
+        // Method 1: Keyword-based KB matching (only with HIGH confidence)
         const kbMatch = this._matchKnowledgeBase(message);
         if (kbMatch) {
             return {
@@ -122,11 +124,11 @@ class KnowledgeBrain {
             };
         }
 
-        // Method 2: NLP classification (trained model)
+        // Method 2: NLP classification (trained model) — HIGH threshold only
         if (this.isTrained) {
             try {
                 const result = await this.manager.process('en', message);
-                const threshold = 0.65; // Slightly lower than before for better coverage
+                const threshold = 0.80; // High threshold — only match when very confident
 
                 if (result.intent !== 'None' && result.score > threshold && result.answer) {
                     return {
@@ -140,11 +142,12 @@ class KnowledgeBrain {
             }
         }
 
-        return null; // Nothing matched, let other brains handle it
+        return null; // Let the AI handle it with full context
     }
 
     /**
      * Fast keyword-based KB matching
+     * Requires at least 2 pattern matches to avoid false positives
      */
     _matchKnowledgeBase(message) {
         const msg = message.toLowerCase();
@@ -161,14 +164,15 @@ class KnowledgeBrain {
                 }
             }
 
-            // Require at least 1 match, prefer more
-            if (score > maxScore) {
+            // Require at least 2 keyword matches to avoid false positives
+            // Single word matches like "like" or "work" catch too many normal messages
+            if (score > maxScore && score >= 2) {
                 maxScore = score;
                 bestMatch = entry;
             }
         }
 
-        return bestMatch && maxScore > 0 ? bestMatch.answer : null;
+        return bestMatch ? bestMatch.answer : null;
     }
 }
 

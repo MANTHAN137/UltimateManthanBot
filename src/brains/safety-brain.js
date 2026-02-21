@@ -13,26 +13,25 @@
 
 class SafetyBrain {
     constructor() {
-        // Patterns that should NEVER appear in responses
+        // Only the most BLATANT patterns that would break the illusion
+        // Keep this list MINIMAL — over-filtering causes broken/incomplete responses
         this.blockedPatterns = [
-            // AI identity leaks
-            { pattern: /\bas an ai\b/gi, replacement: '', reason: 'AI identity leak' },
-            { pattern: /\bi('m| am) (a |an )?(ai|artificial intelligence|bot|language model|llm|chatbot)/gi, replacement: '', reason: 'AI identity leak' },
-            { pattern: /\bi('m| am) not (a |an )?(real|actual) (person|human)/gi, replacement: '', reason: 'AI identity leak' },
-            { pattern: /\bas a (large )?language model/gi, replacement: '', reason: 'AI identity leak' },
-            { pattern: /\bmy (training|programming|creators|developers)/gi, replacement: '', reason: 'AI identity leak' },
-            { pattern: /\bi (was|am) (created|made|built|trained|programmed) (by|at)/gi, replacement: '', reason: 'AI identity leak' },
-            { pattern: /\b(openai|anthropic|google ai|deepmind|meta ai)\b/gi, replacement: '', reason: 'AI company reference' },
+            // Blatant AI identity leaks only
+            { pattern: /\bAs an AI\b/gi, replacement: '', reason: 'AI identity leak' },
+            { pattern: /\bI am an AI\b/gi, replacement: '', reason: 'AI identity leak' },
+            { pattern: /\bI'm an AI\b/gi, replacement: '', reason: 'AI identity leak' },
+            { pattern: /\bI am a (large )?language model\b/gi, replacement: '', reason: 'AI identity leak' },
+            { pattern: /\bI'm a (large )?language model\b/gi, replacement: '', reason: 'AI identity leak' },
+            { pattern: /\bI am a chatbot\b/gi, replacement: '', reason: 'AI identity leak' },
+            { pattern: /\bI'm a chatbot\b/gi, replacement: '', reason: 'AI identity leak' },
 
-            // Personal data patterns
-            { pattern: /\b\d{10,}\b/g, replacement: '[REDACTED]', reason: 'Phone number leak' },
-            { pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, replacement: '[REDACTED]', reason: 'Email leak' },
-
-            // API/Technical leaks
-            { pattern: /\bapi (key|limit|error|unavailable|exceeded)\b/gi, replacement: '', reason: 'Technical leak' },
-            { pattern: /\b(service|server) (unavailable|down|error)\b/gi, replacement: '', reason: 'Technical leak' },
+            // API/Technical leaks (these expose bot nature)
+            { pattern: /\bapi key\b/gi, replacement: '', reason: 'Technical leak' },
             { pattern: /\b(gemini|gpt|claude|openai) (api|error|failed)\b/gi, replacement: '', reason: 'Technical leak' }
         ];
+        // NOTE: Removed 'my training/programming/creators' — these can appear in normal conversation
+        // NOTE: Removed phone/email redaction — the model knows Manthan's contact info and should share it
+        // NOTE: Removed 'service unavailable' — over-zealous, can trigger on normal conversation
 
         // Topics that require deferral
         this.sensitiveTopics = [
@@ -56,18 +55,20 @@ class SafetyBrain {
     filter(response, userMessage, intent) {
         let filtered = response;
 
-        // 1. Check blocked patterns
+        // 1. Check blocked patterns — light touch, don't mangle the response
         for (const { pattern, replacement, reason } of this.blockedPatterns) {
+            // Reset BEFORE testing (important for /g regexes)
+            pattern.lastIndex = 0;
             if (pattern.test(filtered)) {
                 console.log(`   🛡️ Safety: Blocked ${reason}`);
+                pattern.lastIndex = 0; // Reset again before replace
                 filtered = filtered.replace(pattern, replacement);
             }
-            // Reset regex lastIndex
-            pattern.lastIndex = 0;
         }
 
         // 2. Check if user is asking about sensitive topics
         const isSensitive = this.sensitiveTopics.some(pattern => {
+            pattern.lastIndex = 0;
             const result = pattern.test(userMessage);
             pattern.lastIndex = 0;
             return result;
@@ -78,12 +79,12 @@ class SafetyBrain {
             filtered = "hmm, I'd rather not get into that over text. hit me up later and we can talk properly 🙏";
         }
 
-        // 3. Clean up empty spaces from removals
-        filtered = filtered.replace(/\s{2,}/g, ' ').trim();
+        // 3. Light cleanup — fix double spaces but don't over-process
+        filtered = filtered.replace(/  +/g, ' ').trim();
 
-        // 4. If response became too short after filtering, use fallback
-        if (filtered.length < 5) {
-            filtered = "let me think about that and get back to you 🤔";
+        // 4. Only use fallback if response is completely empty
+        if (filtered.length < 2) {
+            filtered = "hmm let me think on that 🤔";
         }
 
         return filtered;

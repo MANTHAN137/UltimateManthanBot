@@ -33,31 +33,22 @@ class Humanizer {
 
         let humanized = response;
 
-        // 1. Trim excessive formality
+        // 1. Light formality trim (only the most obvious bot-speak)
         humanized = this._trimFormality(humanized);
 
-        // 2. Match person's communication style
-        if (personMemory?.communicationStyle) {
-            humanized = this._matchStyle(humanized, personMemory.communicationStyle);
-        }
-
-        // 3. Time-based adjustments
+        // 2. Time-based adjustments (very light touch)
         if (timeContext) {
             humanized = this._adjustForTime(humanized, timeContext);
         }
 
-        // 4. Group-specific trimming
+        // 3. Group-specific trimming (only if way too long)
         if (isGroup) {
             humanized = this._trimForGroup(humanized);
         }
 
-        // 5. Occasional filler word (5% chance)
-        if (Math.random() < 0.05 && !isGroup) {
-            const filler = this.fillerPrefixes[Math.floor(Math.random() * this.fillerPrefixes.length)];
-            if (filler) {
-                humanized = filler + humanized.charAt(0).toLowerCase() + humanized.slice(1);
-            }
-        }
+        // NOTE: We do NOT match person's communication style anymore.
+        // The system prompt already tells the model to match the person's vibe.
+        // Post-processing style matching was causing truncation and loss of content.
 
         return humanized;
     }
@@ -103,29 +94,20 @@ class Humanizer {
     _trimFormality(response) {
         let cleaned = response;
 
-        // Remove generic formal openers
+        // Only remove the MOST OBVIOUS robotic openers that nobody uses in real texting
         const formalOpeners = [
-            /^(certainly|absolutely|of course|sure thing|i'd be happy to|i'd love to|i would be glad to)[,!.]?\s*/i,
+            /^(certainly|absolutely|sure thing|i'd be happy to|i'd love to|i would be glad to)[,!.]?\s*/i,
             /^(thank you for (asking|reaching out|your message))[,!.]?\s*/i,
-            /^(that's a great question)[,!.]?\s*/i,
-            /^(hello there)[,!.]?\s*/i
+            /^(that's a (great|wonderful|excellent) question)[,!.]?\s*/i,
         ];
 
         for (const pattern of formalOpeners) {
             cleaned = cleaned.replace(pattern, '');
         }
 
-        // Remove formal closers
-        const formalClosers = [
-            /\s*(feel free to (ask|reach out|let me know) (if|anytime).*?)$/i,
-            /\s*(i hope (this|that|i) (helps|answered|was helpful).*?)$/i,
-            /\s*(don't hesitate to.*?)$/i,
-            /\s*(is there anything else.*?)$/i
-        ];
-
-        for (const pattern of formalClosers) {
-            cleaned = cleaned.replace(pattern, '');
-        }
+        // NOTE: We do NOT trim closers anymore.
+        // The system prompt explicitly tells the model not to use formal language.
+        // Removing closers was causing responses to feel cut off and incomplete.
 
         return cleaned.trim();
     }
@@ -133,34 +115,8 @@ class Humanizer {
     /**
      * Match the person's communication style
      */
-    _matchStyle(response, style) {
-        switch (style) {
-            case 'casual-friendly':
-                // Already casual, just ensure lowercase
-                return response;
-
-            case 'formal':
-                // Keep it slightly more structured
-                return response;
-
-            case 'hinglish':
-                // Don't modify - the LLM should handle Hinglish from the prompt
-                return response;
-
-            case 'brief':
-                // Trim to be concise
-                if (response.length > 150) {
-                    const sentences = response.split(/[.!?]+/).filter(s => s.trim());
-                    if (sentences.length > 2) {
-                        return sentences.slice(0, 2).join('. ').trim() + '.';
-                    }
-                }
-                return response;
-
-            default:
-                return response;
-        }
-    }
+    // Style matching removed — the model handles this via the system prompt now.
+    // Previously this was truncating 'brief' style responses to 150 chars which killed good content.
 
     /**
      * Adjust tone based on time of day

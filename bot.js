@@ -561,16 +561,37 @@ async function startBot() {
                     throw new Error('Empty response from Brain Router');
                 }
 
-                // Simulate typing (humanized delay)
-                const typingDelay = result.typingDelay || 1500;
-                await simulateTyping(sock, sender, typingDelay);
+                // ─── Multi-Message Send (Human Style) ──────────
+                // Split by "---" (explicit) or triple newline (natural break)
+                const parts = result.response.split(/---|(?:\n\s*\n\s*\n)/).filter(p => p.trim() !== '');
 
-                // Send text response
-                await sock.sendMessage(
-                    sender,
-                    { text: result.response },
-                    isGroup ? { quoted: msg } : undefined
-                );
+                for (let i = 0; i < parts.length; i++) {
+                    const part = parts[i].trim();
+                    if (!part) continue;
+
+                    // Calculate typing delay for THIS specific part
+                    // Parts after the first one trigger faster typing since the bot is "already in the flow"
+                    let partTypingDelay = result.typingDelay || 1500;
+                    if (i > 0) partTypingDelay = Math.max(800, partTypingDelay * 0.5);
+
+                    // If it's the first part, we already waited for some of the delay? 
+                    // No, BrainRouter returns the total expected delay for the WHOLE response.
+                    // We'll just calculate a per-part delay.
+                    const charDelay = (part.length * (config.intelligenceConfig.typingDelayPerChar || 8) / 10) + 500;
+                    const finalDelay = i === 0 ? partTypingDelay : Math.max(800, charDelay);
+
+                    await simulateTyping(sock, sender, finalDelay);
+
+                    // Send this part
+                    await sock.sendMessage(
+                        sender,
+                        { text: part },
+                        (isGroup && i === 0) ? { quoted: msg } : undefined // Only quote the first part in groups
+                    );
+
+                    console.log(`   📤 Sent part ${i + 1}/${parts.length} (${part.length} chars)`);
+                }
+                // ───────────────────────────────────────────────
 
                 // Send meme image if this is a meme result
                 if (result.isMeme && result.imageUrl) {

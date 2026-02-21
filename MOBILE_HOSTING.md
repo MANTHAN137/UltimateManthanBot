@@ -56,7 +56,22 @@ node bot.js
 ```
 A QR code will appear in your terminal. **Scan it with WhatsApp** linked devices.
 
-### 6. Keep Running in Background
+### 6. How to Update the Bot
+If you've pushed new code to GitHub and want to update the bot in Termux:
+```bash
+# 1. Stop the bot (Ctrl+C)
+
+# 2. Get latest code
+git pull origin main
+
+# 3. Refresh dependencies
+npm install
+
+# 4. Restart
+node bot.js
+```
+
+### 7. Keep Running in Background
 
 #### Option A: Using `termux-wake-lock` (recommended)
 ```bash

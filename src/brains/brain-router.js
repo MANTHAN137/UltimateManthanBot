@@ -110,18 +110,17 @@ class BrainRouter {
             abTesting.recordEngagement(contactId, replyTimeMs, quickReplyBonus);
         }
 
-        // ═══ STEP 1: Intent + Emotion Analysis ═══
-        const intent = intentEngine.analyze(message);
-        const emotion = emotionEngine.detect(message);
+        // ═══ STEP 1: Intelligence Analysis (NLU) ═══
+        const intent = intentEngine.analyze(message || imageCaption || '');
+        const emotion = emotionEngine.analyze(message || imageCaption || '', contactId);
 
-        console.log(`   🎯 Intent: ${intent.primary} (${intent.subIntent || '-'}) | Confidence: ${(intent.confidence * 100).toFixed(0)}%`);
-        console.log(`   💭 Emotion: ${emotion.primary} (${emotion.intensity}) | Language: ${intent.language}`);
+        console.log(`🎯 Intent: ${intent.primary} | 💭 Emotion: ${emotion.primary} (${emotion.intensity})`);
 
-        // ═══ STEP 2: Memory Operations ═══
-        memoryStore.updatePersonMemory(contactId, {
-            phoneNumber,
-            displayName: phoneNumber
-        });
+        // ═══ STEP 2: Memory & Context ═══
+        // Update contact last seen/info
+        if (phoneNumber) {
+            memoryStore.updateContact(contactId, { phoneNumber, lastSeen: new Date().toISOString() });
+        }
 
         memoryStore.learnPersonStyle(contactId, message);
 
@@ -143,10 +142,10 @@ class BrainRouter {
         try {
             conversationRecap = await summarizer.getContextRecap(contactId);
             if (conversationRecap) {
-                console.log(`   📝 Conversation summary injected (${conversationRecap.length} chars)`);
+                console.log(`   📝 Context Summary: ${conversationRecap.substring(0, 50)}...`);
             }
         } catch (e) {
-            // Non-critical
+            console.error('   ⚠️ Summary failed:', e.message);
         }
 
         // ═══ STEP 4: Route to Brain ═══
@@ -157,6 +156,12 @@ class BrainRouter {
         const abOverrides = abTesting.getConfigOverrides(contactId);
 
         // ═══ STEP 6: Generate Response ═══
+        // Base context for ANY AI call
+        const aiContext = {
+            isGroup, intent, emotion, personMemory, isNewContact,
+            conversationRecap, abOverrides, quotedText, imageBuffer
+        };
+
         let result;
 
         try {
@@ -169,13 +174,23 @@ class BrainRouter {
                     result = reminderEngine.process(message, contactId);
                     break;
 
-                case 'news':
-                    result = await newsBrain.process(message, isGroup);
+                case 'news': {
+                    const findings = await newsBrain.process(message, isGroup);
+                    result = await chatBrain.process(contactId, message, {
+                        ...aiContext,
+                        externalFindings: findings?.response || findings
+                    });
                     break;
+                }
 
-                case 'joke':
-                    result = await jokeBrain.process(message, isGroup);
+                case 'joke': {
+                    const findings = await jokeBrain.process(message, isGroup);
+                    result = await chatBrain.process(contactId, message, {
+                        ...aiContext,
+                        externalFindings: findings?.response || findings
+                    });
                     break;
+                }
 
                 case 'todo':
                     result = await todoBrain.process(message, contactId);
@@ -205,12 +220,7 @@ class BrainRouter {
 
                 case 'link':
                     result = await linkBrain.process(message, isGroup);
-                    if (!result) {
-                        result = await chatBrain.process(contactId, message, {
-                            isGroup, intent, emotion, personMemory, isNewContact,
-                            conversationRecap, abOverrides
-                        });
-                    }
+                    if (!result) result = await chatBrain.process(contactId, message, aiContext);
                     break;
 
                 case 'translate':
@@ -219,47 +229,49 @@ class BrainRouter {
 
                 case 'music':
                     result = await musicBrain.process(message, isGroup);
-                    if (!result) {
-                        result = await chatBrain.process(contactId, message, {
-                            isGroup, intent, emotion, personMemory, isNewContact,
-                            conversationRecap, abOverrides
-                        });
-                    }
+                    if (!result) result = await chatBrain.process(contactId, message, aiContext);
                     break;
 
-                case 'finance':
-                    result = await financeBrain.process(message, isGroup);
+                case 'finance': {
+                    const findings = await financeBrain.process(message, isGroup);
+                    result = await chatBrain.process(contactId, message, {
+                        ...aiContext,
+                        externalFindings: findings?.response || findings
+                    });
                     break;
+                }
 
-                case 'search':
-                    result = await searchBrain.process(message, intent, isGroup);
-                    if (!result) {
+                case 'search': {
+                    const findings = await searchBrain.process(message, intent, isGroup);
+                    result = await chatBrain.process(contactId, message, {
+                        ...aiContext,
+                        externalFindings: findings?.response || findings
+                    });
+                    break;
+                }
+
+                case 'youtube': {
+                    const findings = await youtubeBrain.process(message, isGroup);
+                    result = await chatBrain.process(contactId, message, {
+                        ...aiContext,
+                        externalFindings: findings?.response || findings
+                    });
+                    break;
+                }
+
+                case 'knowledge': {
+                    const findings = await knowledgeBrain.process(message, intent);
+                    if (findings) {
+                        // Let Gemini handle the knowledge response naturally
                         result = await chatBrain.process(contactId, message, {
-                            isGroup, intent, emotion, personMemory, isNewContact,
-                            conversationRecap, abOverrides
+                            ...aiContext,
+                            externalFindings: findings.response
                         });
+                    } else {
+                        result = await chatBrain.process(contactId, message, aiContext);
                     }
                     break;
-
-                case 'youtube':
-                    result = await youtubeBrain.process(message, isGroup);
-                    if (!result) {
-                        result = await chatBrain.process(contactId, message, {
-                            isGroup, intent, emotion, personMemory, isNewContact,
-                            conversationRecap, abOverrides
-                        });
-                    }
-                    break;
-
-                case 'knowledge':
-                    result = await knowledgeBrain.process(message, intent);
-                    if (!result) {
-                        result = await chatBrain.process(contactId, message, {
-                            isGroup, intent, emotion, personMemory, isNewContact,
-                            conversationRecap, abOverrides
-                        });
-                    }
-                    break;
+                }
 
                 case 'social':
                     result = await socialBrain.process(message, intent, emotion, isGroup);
@@ -267,10 +279,7 @@ class BrainRouter {
 
                 case 'chat':
                 default:
-                    result = await chatBrain.process(contactId, message, {
-                        isGroup, intent, emotion, personMemory, isNewContact,
-                        conversationRecap, abOverrides, quotedText
-                    });
+                    result = await chatBrain.process(contactId, message, aiContext);
                     break;
             }
         } catch (error) {
@@ -423,9 +432,10 @@ class BrainRouter {
             return { brain: 'search', reason: 'search request detected' };
         }
 
-        // Quick social responses
-        if (['greeting', 'farewell', 'thanks', 'birthday', 'festival'].includes(intent.primary)) {
-            return { brain: 'social', reason: 'social intent' };
+        // Greetings, farewells, thanks, casual → let the AI handle them naturally
+        // Birthday/festival — social brain has specific pre-configured responses
+        if (['birthday', 'festival'].includes(intent.primary)) {
+            return { brain: 'social', reason: 'special occasion' };
         }
 
         // Knowledge requests about Manthan
