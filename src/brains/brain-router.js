@@ -119,7 +119,7 @@ class BrainRouter {
         // ═══ STEP 2: Memory & Context ═══
         // Update contact last seen/info
         if (phoneNumber) {
-            memoryStore.updateContact(contactId, { phoneNumber, lastSeen: new Date().toISOString() });
+            memoryStore.updatePersonMemory(contactId, { phoneNumber });
         }
 
         memoryStore.learnPersonStyle(contactId, message);
