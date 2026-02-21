@@ -73,10 +73,10 @@ class EmotionEngine {
     }
 
     /**
-     * Detect emotion from a message
+     * Analyze emotion from a message
      * @returns {{ primary: string, secondary: string|null, intensity: string, confidence: number, scores: Object }}
      */
-    detect(message) {
+    analyze(message, contactId = null) {
         const msg = message.toLowerCase();
         const scores = {};
 
