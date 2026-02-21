@@ -23,7 +23,7 @@ class Formatter {
             const text = result.text.length > 150
                 ? result.text.substring(0, 147) + '...'
                 : result.text;
-            return `💡 ${text}${result.url ? '\n🔗 ' + result.url : ''}`;
+            return `💡 ${text}${result.url ? '\n🔗 ' + this._cleanUrl(result.url) : ''}`;
         }
 
         let msg = '';
@@ -40,7 +40,7 @@ class Formatter {
         }
 
         if (result.url) {
-            msg += `\n\n🔗 *Source:* ${result.url}`;
+            msg += `\n\n🔗 *Source:* ${this._cleanUrl(result.url)}`;
         }
 
         return msg;
@@ -54,7 +54,7 @@ class Formatter {
 
         if (isGroup) {
             const top = results[0];
-            return `🔍 ${top.snippet}${top.url ? '\n🔗 ' + top.url : ''}`;
+            return `🔍 ${top.snippet}${top.url ? '\n🔗 ' + this._cleanUrl(top.url) : ''}`;
         }
 
         let msg = `🔍 *Search Results for "${query}"*\n${this.THIN_SEP}\n`;
@@ -63,7 +63,7 @@ class Formatter {
         topResults.forEach((r, i) => {
             msg += `\n*${i + 1}.* ${r.title ? `*${r.title}*\n` : ''}`;
             msg += `   ${r.snippet}`;
-            if (r.url) msg += `\n   🔗 ${r.url}`;
+            if (r.url) msg += `\n   🔗 ${this._cleanUrl(r.url)}`;
             if (i < topResults.length - 1) msg += '\n';
         });
 
@@ -82,7 +82,7 @@ class Formatter {
 
         if (isGroup) {
             const top = videos[0];
-            return `🎬 *${this._decodeHtml(top.title)}*\n▶️ ${top.url}`;
+            return `🎬 *${this._decodeHtml(top.title)}*\n▶️ ${this._cleanUrl(top.url)}`;
         }
 
         let msg = `🎬 *YouTube Results for "${query}"*\n${this.THIN_SEP}\n`;
@@ -95,7 +95,7 @@ class Formatter {
             if (v.duration) meta.push(`⏱️ ${v.duration}`);
             if (v.views) meta.push(`👁️ ${this._formatViews(v.views)}`);
             if (meta.length > 0) msg += `\n   ${meta.join('  •  ')}`;
-            msg += `\n   ▶️ ${v.url}`;
+            msg += `\n   ▶️ ${this._cleanUrl(v.url)}`;
             if (i < topVideos.length - 1) msg += '\n';
         });
 
@@ -114,7 +114,7 @@ class Formatter {
 
         if (isGroup) {
             const top = articles[0];
-            return `📰 *${top.title}*\n🔗 ${top.link}`;
+            return `📰 *${top.title}*\n🔗 ${this._cleanUrl(top.link)}`;
         }
 
         let msg = `📰 *${topic ? topic + ' ' : ''}News Headlines*\n${this.THIN_SEP}\n`;
@@ -122,7 +122,7 @@ class Formatter {
         articles.slice(0, 5).forEach((a, i) => {
             msg += `\n*${i + 1}.* ${a.title}`;
             if (a.source) msg += `\n   📌 _${a.source}_`;
-            if (a.link) msg += `\n   🔗 ${a.link}`;
+            if (a.link) msg += `\n   🔗 ${this._cleanUrl(a.link)}`;
             if (i < Math.min(articles.length, 5) - 1) msg += '\n';
         });
 
@@ -232,6 +232,35 @@ class Formatter {
         if (num >= 1e6) return `${(num / 1e6).toFixed(2)}M`;
         if (num >= 1e3) return `${(num / 1e3).toFixed(1)}K`;
         return num.toString();
+    }
+
+    /**
+     * Clean long URLs by removing tracking/garbage params
+     */
+    _cleanUrl(url) {
+        if (!url) return '';
+        try {
+            const u = new URL(url);
+
+            // Keep youtube video IDs
+            if (u.hostname.includes('youtube.com') && u.searchParams.has('v')) {
+                return `https://youtu.be/${u.searchParams.get('v')}`;
+            }
+
+            // Keep google search queries but nothing else
+            if (u.hostname.includes('google.com') && u.pathname.includes('/search')) {
+                const q = u.searchParams.get('q');
+                return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+            }
+
+            // For everything else, strip query params to keep it clean
+            u.search = '';
+            u.hash = '';
+
+            return u.toString().replace(/\/$/, ''); // Remove trailing slash
+        } catch (e) {
+            return url; // Return original if parsing fails
+        }
     }
 }
 

@@ -32,7 +32,7 @@ class NewsBrain {
 
             if (!articles || articles.length === 0) {
                 return {
-                    response: `couldn't fetch news rn 😅 try google news:\n🔗 https://news.google.com`,
+                    response: `couldn't fetch news rn 😅 try here: https://news.google.com`,
                     source: 'news-brain/fallback',
                     isQuickResponse: true
                 };
@@ -51,7 +51,7 @@ class NewsBrain {
         } catch (error) {
             console.error(`   ❌ News Brain error: ${error.message}`);
             return {
-                response: `news fetch failed, check here:\n🔗 https://news.google.com${topic ? '/search?q=' + encodeURIComponent(topic) : ''}`,
+                response: `news fetch failed, check here: https://news.google.com${topic ? '/search?q=' + encodeURIComponent(topic) : ''}`,
                 source: 'news-brain/fallback',
                 isQuickResponse: true
             };

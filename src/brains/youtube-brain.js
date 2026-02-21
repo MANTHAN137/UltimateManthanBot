@@ -62,7 +62,7 @@ class YouTubeBrain {
                 // Always give the user a direct YouTube search link
                 const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(cleanQuery)}`;
                 return {
-                    response: `couldn't pull specific videos rn, but here's the direct search 🔍\n\n🔗 ${searchUrl}`,
+                    response: `couldn't pull specific videos rn, but try searching here: ${searchUrl}`,
                     source: 'youtube-brain/link',
                     isQuickResponse: true
                 };

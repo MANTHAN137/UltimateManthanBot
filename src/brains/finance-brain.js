@@ -80,7 +80,7 @@ class FinanceBrain {
 
             const response = isGroup
                 ? `💰 *${name}:* $${usd} (₹${inr}) ${changeEmoji} ${change}%`
-                : `💰 *${name} Price*\n\n💵 USD: $${usd}\n💴 INR: ₹${inr}\n${changeEmoji} 24h: ${change}%\n📊 Market Cap: $${mcap}\n\n🔗 https://www.coingecko.com/en/coins/${coinId}`;
+                : `💰 *${name} Price*\n\n💵 USD: $${usd}\n💴 INR: ₹${inr}\n${changeEmoji} 24h: ${change}%\n📊 Market Cap: $${mcap}\n\nCheck here: https://www.coingecko.com/en/coins/${coinId}`;
 
             const result = { response, source: 'finance-brain/crypto', isQuickResponse: true };
             this._setCache(`crypto_${coinId}`, result);
@@ -88,7 +88,7 @@ class FinanceBrain {
         } catch (error) {
             console.error('   ❌ Crypto API error:', error.message);
             return {
-                response: `💰 *${coinId}*\n\nCouldn't fetch live price. Check here:\n🔗 https://www.coingecko.com/en/coins/${coinId}`,
+                response: `💰 *${coinId}*\n\nCouldn't fetch price. Check: https://www.coingecko.com/en/coins/${coinId}`,
                 source: 'finance-brain/crypto-fallback',
                 isQuickResponse: true
             };
@@ -100,13 +100,13 @@ class FinanceBrain {
         const gfLink = `https://www.google.com/finance/quote/${symbol}`;
         const response = isGroup
             ? `📊 *${name}*: ${gfLink}`
-            : `📊 *${name} Stock*\n\n🔗 *Google Finance:* ${gfLink}\n📈 *TradingView:* https://www.tradingview.com/symbols/${symbol.replace('.NS', '')}`;
+            : `📊 *${name} Stock*\n\nGoogle Finance: ${gfLink}\nTradingView: https://www.tradingview.com/symbols/${symbol.replace('.NS', '')}`;
         return { response, source: 'finance-brain/stock', isQuickResponse: true };
     }
 
     _getMarketOverview(isGroup) {
         return {
-            response: `📊 *Market Overview*\n\n🇮🇳 *Nifty 50:* https://www.google.com/finance/quote/NIFTY_50:INDEXNSE\n🇮🇳 *Sensex:* https://www.google.com/finance/quote/SENSEX:INDEXBOM\n🇺🇸 *Dow Jones:* https://www.google.com/finance/quote/.DJI:INDEXDJX\n🇺🇸 *Nasdaq:* https://www.google.com/finance/quote/.IXIC:INDEXNASDAQ\n\n_Click any link for live data_`,
+            response: `📊 *Market Overview*\n\n🇮🇳 Nifty 50: https://www.google.com/finance/quote/NIFTY_50:INDEXNSE\n🇮🇳 Sensex: https://www.google.com/finance/quote/SENSEX:INDEXBOM\n🇺🇸 Dow Jones: https://www.google.com/finance/quote/.DJI:INDEXDJX\n🇺🇸 Nasdaq: https://www.google.com/finance/quote/.IXIC:INDEXNASDAQ`,
             source: 'finance-brain/market',
             isQuickResponse: true
         };

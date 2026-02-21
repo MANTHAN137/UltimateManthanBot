@@ -74,7 +74,7 @@ class SearchBrain {
             // Both methods failed — still give user a Google link
             const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(cleanQuery)}`;
             return {
-                response: `couldn't search that rn, but here's a quick link 🔗\n\n${googleUrl}`,
+                response: `couldn't search that rn, but u can try here: ${googleUrl}`,
                 source: 'search-brain/link',
                 isQuickResponse: true
             };
@@ -84,7 +84,7 @@ class SearchBrain {
             // Even on error, give user a Google link
             const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(cleanQuery)}`;
             return {
-                response: `search hit a snag, but try this 🔗\n\n${googleUrl}`,
+                response: `search hit a snag, try this: ${googleUrl}`,
                 source: 'search-brain/link',
                 isQuickResponse: true
             };
