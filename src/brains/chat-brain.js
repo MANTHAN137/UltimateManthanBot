@@ -264,10 +264,41 @@ class ChatBrain {
             }
         }
 
+        // Convert Markdown → WhatsApp formatting
+        cleaned = this._convertToWhatsApp(cleaned);
+
         // Clean up excessive whitespace only
         cleaned = cleaned.replace(/\n{4,}/g, '\n\n').replace(/  +/g, ' ');
 
         return cleaned;
+    }
+
+    /**
+     * Convert Markdown formatting to WhatsApp-native formatting
+     * Gemini outputs Markdown by default — WhatsApp uses different syntax
+     */
+    _convertToWhatsApp(text) {
+        let converted = text;
+
+        // 1. Convert **bold** → *bold* (double asterisks → single)
+        //    Must do this BEFORE handling single asterisks
+        converted = converted.replace(/\*\*(.+?)\*\*/g, '*$1*');
+
+        // 2. Convert ### Header / ## Header / # Header → *Header* with emoji if missing
+        converted = converted.replace(/^#{1,3}\s+(.+)$/gm, '*$1*');
+
+        // 3. Convert Markdown bullet points (- item or * item at start of line) → • item
+        //    Be careful not to break WhatsApp bold (*text*)
+        converted = converted.replace(/^[-]\s+/gm, '• ');
+        converted = converted.replace(/^\*\s+(?!\*)/gm, '• ');
+
+        // 4. Remove horizontal rules (--- or ***) — these show as literal text on WhatsApp
+        converted = converted.replace(/^[-*]{3,}\s*$/gm, '');
+
+        // 5. Clean up empty lines left behind
+        converted = converted.replace(/\n{3,}/g, '\n\n');
+
+        return converted.trim();
     }
     /**
      * Strip URLs from a response
