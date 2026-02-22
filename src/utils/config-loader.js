@@ -46,7 +46,7 @@ class ConfigLoader {
     get interests() { return this.config?.interests || {}; }
     get personality() { return this.config?.personality || {}; }
     get botPersonality() { return this.config?.botPersonality || {}; }
-    get quickResponses() { return this.config?.quickResponses || {}; }
+
     get alertSettings() { return this.config?.alertSettings || {}; }
     get knowledgeBase() { return this.config?.knowledgeBase || []; }
     get intelligenceConfig() { return this.config?.intelligenceConfig || {}; }

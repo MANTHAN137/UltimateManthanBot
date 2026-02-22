@@ -288,12 +288,6 @@
             "greeting": "Happy New Year! 🎉 Let's crush it this year!"
         }
     ],
-    "quickResponses": {
-        "greeting": "Hey! 👋 Manthan's bot here. How can I help you today?",
-        "goodbye": "Take care! Feel free to reach out anytime. 🙏",
-        "thanks": "You're welcome! Happy to help. 😊",
-        "humanRequest": "Got it! I'll let Manthan know you want to chat. He'll reach out when he's free! 📱"
-    },
     "ownerTakeover": {
         "enabled": true,
         "pauseDurationSeconds": 30,

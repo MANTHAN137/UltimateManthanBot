@@ -1,20 +1,16 @@
 /**
  * ╔══════════════════════════════════════════════════════════════╗
- * ║        MANTHAN AI — ULTIMATE OMNI BOT v4.1 FINAL            ║
- * ║  Multi-Brain | EQ | Voice | Search | YouTube | Instagram    ║
- * ║  Summarizer  | A/B Testing | Human-Like | Persistent        ║
+ * ║        MANTHAN AI — ULTIMATE OMNI BOT v6.0                  ║
+ * ║  Chat-First | Context | Search | YouTube | Human-Like       ║
  * ╚══════════════════════════════════════════════════════════════╝
  * 
  * Architecture:
- * 
  *   Message → Trigger Check → Intent+Emotion NLP → Memory Fetch
- *       → Summarizer (compress if long) → Router Brain
- *       → Chat/Knowledge/Social/Search/YouTube Brain
+ *       → Context Recap → Router → Chat Brain (default)
  *       → Safety Filter → Humanizer → Voice (optional) → Send
- *       → A/B Testing (track engagement)
  * 
  * Author: Manthan Dhole
- * Version: 4.1.0
+ * Version: 6.0.0
  */
 
 const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, downloadMediaMessage } = require('@whiskeysockets/baileys');
@@ -51,7 +47,7 @@ app.get('/', (req, res) => {
     if (!latestQR) {
         return res.send(`
             <html><body style="background:#111;color:#fff;font-family:monospace;text-align:center;padding:40px">
-                <h1>🧠 Manthan AI v4.1</h1>
+                <h1>🧠 Manthan AI v6.0</h1>
                 <p>WhatsApp is either connected or waiting for QR generation...</p>
                 <p>Refresh in a few seconds.</p>
             </body></html>
@@ -61,7 +57,7 @@ app.get('/', (req, res) => {
     QRCode.toDataURL(latestQR, (err, url) => {
         res.send(`
             <html><body style="background:#111;color:#fff;font-family:monospace;text-align:center;padding:40px">
-                <h1>🧠 Manthan AI v4.1</h1>
+                <h1>🧠 Manthan AI v6.0</h1>
                 <h2>📱 Scan to Connect WhatsApp</h2>
                 <img src="${url}" style="width:300px;border-radius:12px;margin:20px" />
                 <p style="color:#888">This page auto-refreshes every 30 seconds</p>
@@ -76,18 +72,13 @@ app.get('/health', (req, res) => {
     const stats = memoryStore.getStats();
     res.json({
         status: 'online',
-        version: '4.1.0',
+        version: '6.0.0',
         brains: ['chat', 'knowledge', 'search', 'youtube', 'social', 'safety'],
-        engines: ['voice', 'summarizer', 'ab-testing'],
+        engines: ['voice', 'summarizer'],
         platforms: ['whatsapp', instagramInterface.isConfigured ? 'instagram' : 'instagram (not configured)'],
         memory: stats,
         uptime: process.uptime()
     });
-});
-
-// A/B Test report
-app.get('/ab-report', (req, res) => {
-    res.json({ report: brainRouter.getABReport() });
 });
 
 // Daily digest
@@ -98,10 +89,14 @@ app.get('/digest', async (req, res) => {
 
 // Analytics API
 app.get('/api/analytics', (req, res) => {
-    const data = analyticsEngine.getData();
-    data.mode = autoReplyEngine.getMode();
-    data.reminders = reminderEngine.getActiveCount();
-    res.json(data);
+    try {
+        const data = analyticsEngine.getData();
+        data.mode = autoReplyEngine.getMode();
+        data.reminders = reminderEngine.getActiveCount();
+        res.json(data);
+    } catch (e) {
+        res.json({ error: e.message });
+    }
 });
 
 // Analytics Dashboard
@@ -233,13 +228,7 @@ async function handleOwnerCommand(sock, sender, command) {
             return true;
         }
 
-        case '/ab report':
-        case '/ab': {
-            const report = brainRouter.getABReport();
-            await sock.sendMessage(sender, { text: report });
-            console.log(`🧪 A/B Report sent to owner`);
-            return true;
-        }
+
 
         case '/digest': {
             const digest = await brainRouter.getDailyDigest();
@@ -254,7 +243,6 @@ async function handleOwnerCommand(sock, sender, command) {
                 `/pause — Pause bot\n` +
                 `/resume — Resume bot\n` +
                 `/stats — Show stats\n` +
-                `/ab — A/B test report\n` +
                 `/digest — Daily digest\n\n` +
                 `*Auto-Reply Modes:*\n` +
                 `/away <msg> — Away mode\n` +
@@ -286,8 +274,8 @@ async function startBot() {
 
     console.log('');
     console.log('╔══════════════════════════════════════════════════════════════╗');
-    console.log('║         🧠 MANTHAN AI — ULTIMATE OMNI BOT v4.1              ║');
-    console.log('║   Multi-Brain | EQ | Voice | Search | YouTube | Instagram   ║');
+    console.log('║         🧠 MANTHAN AI — v6.0 (Chat-First)                   ║');
+    console.log('║   Human-Like | Context | Search | YouTube | Instagram       ║');
     console.log('╚══════════════════════════════════════════════════════════════╝');
     console.log('');
     console.log(`📍 ${config.profile.role || 'AI Assistant'}`);
@@ -348,17 +336,12 @@ async function startBot() {
             console.log('╔══════════════════════════════════════════════════════════════╗');
             console.log(`║  ✅ ${botName}'s Brain v6.0 is ONLINE!                       ║`);
             console.log('╠══════════════════════════════════════════════════════════════╣');
-            console.log('║  BRAINS                        ENGINES                      ║');
-            console.log('║  💬 Chat (Gemini AI)           🎤 Voice (Google TTS)        ║');
-            console.log('║  📚 Knowledge (NLP + KB)       📝 Summarizer (Gemini)       ║');
-            console.log('║  🔍 Search (DuckDuckGo)        🧪 A/B Testing               ║');
-            console.log('║  📹 YouTube (API + Invidious)  ⏰ Reminder Engine            ║');
-            console.log('║  🔗 Link Preview               🕒 Auto-Reply Engine         ║');
-            console.log('║  🎵 Music Search               📈 Analytics Dashboard       ║');
-            console.log('║  🌐 Translation (Gemini)       PLATFORMS                    ║');
-            console.log('║  🎮 Mini Games                  📱 WhatsApp ✓               ║');
-            console.log('║  💰 Finance (CoinGecko)         📸 Instagram                ║');
-            console.log('║  🤝 Social + 🛡️ Safety + 🎭 Humanizer                      ║');
+            console.log('║  💬 Chat (Gemini AI) — handles everything                   ║');
+            console.log('║  🔍 Search (explicit only)     📹 YouTube (explicit only)   ║');
+            console.log('║  📚 Knowledge  🌐 Translation  🔗 Link Preview              ║');
+            console.log('║  📝 Todo  ⏰ Reminder  🎤 Voice  👁️ Vision                  ║');
+            console.log('║  🤝 Social  🛡️ Safety  🎭 Humanizer                        ║');
+            console.log('║  📱 WhatsApp ✓  📸 Instagram                                ║');
             console.log('╚══════════════════════════════════════════════════════════════╝');
             console.log('');
             console.log('📋 Owner Commands: /help | /stats | /away | /dnd | /busy | /online');
@@ -388,7 +371,7 @@ async function startBot() {
                 const userJid = sock.user?.id || state.creds.me?.id;
                 const botJid = userJid ? userJid.split(':')[0] + '@s.whatsapp.net' : null;
 
-                // Get contextInfo from ANY message type (not just extendedTextMessage)
+                // Get contextInfo from ANY message type
                 const contextInfo = msg.message?.extendedTextMessage?.contextInfo
                     || msg.message?.imageMessage?.contextInfo
                     || msg.message?.videoMessage?.contextInfo
@@ -413,6 +396,21 @@ async function startBot() {
 
                 if (!isMentioned && !isQuoted && !isNameMentioned && !imageHasBotMention) {
                     continue;
+                }
+
+                // ═══ "REPLY TO THIS" / "ANSWER THIS" FEATURE ═══
+                // When someone tags the bot and quotes a message asking to answer/reply/respond
+                // The bot should answer the QUOTED message, not the tag message
+                const groupQuotedText = getQuotedText(msg);
+                if (groupQuotedText && messageText) {
+                    const tagMsg = messageText.toLowerCase().trim();
+                    const isAnswerRequest = /\b(answer|reply|respond|jawab|bata|explain|samjha|iska jawab|isko answer|answer this|reply to this|respond to this|isko samjhao|iska answer)\b/i.test(tagMsg);
+                    if (isAnswerRequest) {
+                        // Swap: treat quoted text as the actual message to answer
+                        console.log(`\n🔔 Group "answer this" detected! Answering quoted message.`);
+                        // Store the original quoted text and override message processing below
+                        msg._answerQuotedText = groupQuotedText;
+                    }
                 }
 
                 console.log(`\n🔔 Group ${isQuoted ? 'reply-to-bot' : isMentioned ? 'mention' : isNameMentioned ? 'name mention' : 'image mention'} detected!`);
@@ -490,7 +488,16 @@ async function startBot() {
             // ════════════════════════════════════
             let messageText = getMessageText(msg);
             const hasImage = hasImageMessage(msg);
-            const quotedText = getQuotedText(msg);
+            let quotedText = getQuotedText(msg);
+
+            // ═══ "ANSWER THIS" override ═══
+            // If the group handler detected an "answer this" request,
+            // use the quoted text as the main message to process
+            if (msg._answerQuotedText) {
+                console.log(`   ↩️ Answering quoted message: "${msg._answerQuotedText.substring(0, 80)}..."`);
+                messageText = msg._answerQuotedText;
+                quotedText = ''; // Don't double-pass as quoted
+            }
 
             // Skip if no text AND no image
             if ((!messageText || messageText.trim() === '') && !hasImage) continue;

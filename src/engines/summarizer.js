@@ -15,7 +15,7 @@ class ConversationSummarizer {
     constructor() {
         this.apiKey = process.env.GEMINI_API_KEY;
         this.SUMMARY_THRESHOLD = 15; // Summarize when conversation exceeds this many messages
-        this.summaryCache = new Map();
+        this.summaryCach e = new Map();
 
         console.log('📝 Conversation Summarizer initialized');
     }

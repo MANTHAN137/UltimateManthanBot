@@ -26,13 +26,13 @@ class ChatBrain {
      * Generate AI response with full context
      */
     async process(contactId, message, context = {}) {
-        const { isGroup, intent, emotion, personMemory, isNewContact, conversationRecap, abOverrides, quotedText, imageBuffer, externalFindings } = context;
+        const { isGroup, intent, emotion, personMemory, isNewContact, conversationRecap, quotedText, imageBuffer, externalFindings } = context;
 
         // Build the system prompt with all context
         const systemPrompt = this._buildPrompt(context);
 
         // Get conversation history from memory — more history = better context
-        const history = memoryStore.getFormattedHistory(contactId, isGroup ? 12 : 25);
+        const history = memoryStore.getFormattedHistory(contactId, isGroup ? 20 : 40);
 
         // Prepare the current message part
         const currentMessageParts = [];
@@ -69,7 +69,7 @@ class ChatBrain {
             systemInstruction: {
                 parts: [{ text: systemPrompt }]
             },
-            generationConfig: this._getGenerationConfig(isGroup, intent, emotion, abOverrides),
+            generationConfig: this._getGenerationConfig(isGroup, intent, emotion),
             safetySettings: [
                 { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
                 { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
@@ -83,8 +83,14 @@ class ChatBrain {
             try {
                 const response = await this._callGemini(model, requestBody);
                 if (response) {
-                    // Light cleanup only — don't over-process
-                    const cleaned = this._lightCleanup(response);
+                    // Light cleanup — don't over-process
+                    let cleaned = this._lightCleanup(response);
+
+                    // Strip links if search/youtube wasn't explicitly requested
+                    // Gemini sometimes generates URLs on its own — remove them for pure text
+                    if (!externalFindings) {
+                        cleaned = this._stripLinks(cleaned);
+                    }
 
                     return {
                         response: cleaned,
@@ -132,7 +138,7 @@ class ChatBrain {
      * This is the BRAIN of the bot — it tells the model WHO it is and HOW to think
      */
     _buildPrompt(context) {
-        const { isGroup, intent, emotion, personMemory, isNewContact, conversationRecap, abOverrides, quotedText } = context;
+        const { isGroup, intent, emotion, personMemory, isNewContact, conversationRecap, quotedText, externalFindings } = context;
 
         // Context notes for the LLM
         let contextNote = '';
@@ -151,11 +157,6 @@ class ChatBrain {
             contextNote += `\nWhat you've been talking about so far:\n${conversationRecap}\n`;
         }
 
-        // A/B test: follow-up question instruction
-        if (abOverrides?.askFollowup) {
-            contextNote += '\nKeep the convo going naturally — ask them something back if it feels right.\n';
-        }
-
         // Quoted/reply message context
         if (quotedText) {
             contextNote += `\nThey're replying to this previous message: "${quotedText}"\nMake sure your reply is relevant to what they're responding to.\n`;
@@ -164,7 +165,10 @@ class ChatBrain {
         // External research results (search, youtube, etc.)
         if (externalFindings) {
             contextNote += `\n═══ EXTERNAL RESEARCH FINDINGS ═══\n${externalFindings}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-            contextNote += `Use the above info to answer the user's query naturally. Don't just list them — speak about them like a real person would. If the info isn't relevant, ignore it.\n`;
+            contextNote += `Use the above info to answer the user's query naturally. Include the links/sources provided. Don't just list them — speak about them like a real person would. If the info isn't relevant, ignore it.\n`;
+        } else {
+            // NO external findings → pure text mode
+            contextNote += `\n═══ IMPORTANT: NO LINKS ═══\nDo NOT include any URLs, links, or website addresses in your response. The user didn't ask for search results. Just answer from your own knowledge in pure text. If you don't know something, be honest about it — don't make up links.\n`;
         }
 
         // Safety rules from memory
@@ -190,7 +194,7 @@ class ChatBrain {
      * The model is smart enough to know when to write 2 words vs 2 paragraphs.
      * We just set a high ceiling and let it decide.
      */
-    _getGenerationConfig(isGroup, intent, emotion, abOverrides = {}) {
+    _getGenerationConfig(isGroup, intent, emotion) {
         const intelligenceConfig = config.intelligenceConfig;
 
         // Base config — maximum creativity, model decides natural length
@@ -229,14 +233,6 @@ class ChatBrain {
             genConfig.temperature = 0.8;
         }
 
-        // A/B test overrides (applied last)
-        if (abOverrides.temperature) {
-            genConfig.temperature = abOverrides.temperature;
-        }
-        if (abOverrides.maxOutputTokens) {
-            genConfig.maxOutputTokens = abOverrides.maxOutputTokens;
-        }
-
         return genConfig;
     }
 
@@ -271,6 +267,19 @@ class ChatBrain {
         // Clean up excessive whitespace only
         cleaned = cleaned.replace(/\n{4,}/g, '\n\n').replace(/  +/g, ' ');
 
+        return cleaned;
+    }
+    /**
+     * Strip URLs from a response
+     * Used when search wasn't explicitly requested — keeps replies as pure text
+     */
+    _stripLinks(response) {
+        // Remove full URLs (http/https)
+        let cleaned = response.replace(/https?:\/\/\S+/gi, '').trim();
+        // Remove orphaned link labels like "Check this: " or "Source: " left behind
+        cleaned = cleaned.replace(/(check this|source|link|see|visit|read more|more info|reference)\s*:\s*$/gim, '').trim();
+        // Clean up double spaces and trailing punctuation artifacts
+        cleaned = cleaned.replace(/  +/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
         return cleaned;
     }
 }

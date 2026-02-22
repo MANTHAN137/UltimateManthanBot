@@ -3,10 +3,8 @@
  * Real-time web search using DuckDuckGo
  * No API key needed — uses DuckDuckGo's instant answer + HTML search
  * 
- * Capabilities:
- * - Instant answers (facts, definitions, calculations)
- * - Web search results with snippets
- * - Smart result summarization
+ * IMPORTANT: Only triggers when user EXPLICITLY asks to search.
+ * e.g. "search for X", "google X", "look up X", "find X"
  */
 
 const config = require('../utils/config-loader');
@@ -16,21 +14,16 @@ class SearchBrain {
     constructor() {
         this.DDG_API = 'https://api.duckduckgo.com/';
         this.DDG_HTML = 'https://html.duckduckgo.com/html/';
-        this.cache = new Map(); // Simple in-memory cache
+        this.cache = new Map();
         this.CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
-        console.log('🔍 Search Brain initialized (DuckDuckGo)');
+        console.log('🔍 Search Brain initialized (DuckDuckGo — explicit search only)');
     }
 
     /**
      * Process a search request
-     * @param {string} query - The user's search query
-     * @param {Object} intent - Intent analysis result
-     * @param {boolean} isGroup - Whether in a group chat
-     * @returns {{ response: string, source: string, isQuickResponse: boolean, searchResults: Array }}
      */
     async process(query, intent, isGroup = false) {
-        // Clean the query for search
         const cleanQuery = this._cleanQuery(query);
 
         if (!cleanQuery || cleanQuery.length < 3) {
@@ -81,7 +74,6 @@ class SearchBrain {
 
         } catch (error) {
             console.error(`   ❌ Search Brain error: ${error.message}`);
-            // Even on error, give user a Google link
             const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(cleanQuery)}`;
             return {
                 response: `search hit a snag, try this: ${googleUrl}`,
@@ -93,7 +85,6 @@ class SearchBrain {
 
     /**
      * DuckDuckGo Instant Answer API
-     * Great for facts, definitions, calculations
      */
     async _getInstantAnswer(query) {
         const params = new URLSearchParams({
@@ -111,7 +102,6 @@ class SearchBrain {
 
         const data = await response.json();
 
-        // Check for abstract (main answer)
         if (data.Abstract && data.Abstract.length > 20) {
             return {
                 type: 'abstract',
@@ -123,7 +113,6 @@ class SearchBrain {
             };
         }
 
-        // Check for answer (calculations, conversions)
         if (data.Answer && data.Answer.length > 0) {
             return {
                 type: 'answer',
@@ -134,7 +123,6 @@ class SearchBrain {
             };
         }
 
-        // Check for definition
         if (data.Definition && data.Definition.length > 0) {
             return {
                 type: 'definition',
@@ -145,7 +133,6 @@ class SearchBrain {
             };
         }
 
-        // Check for related topics
         if (data.RelatedTopics && data.RelatedTopics.length > 0) {
             const topics = data.RelatedTopics
                 .filter(t => t.Text)
@@ -166,14 +153,13 @@ class SearchBrain {
     }
 
     /**
-     * DuckDuckGo HTML Search (scrape text results)
-     * Fallback when instant answer doesn't have results
+     * DuckDuckGo HTML Search
      */
     async _htmlSearch(query) {
         try {
             const params = new URLSearchParams({
                 q: query,
-                kl: 'wt-wt' // No region bias
+                kl: 'wt-wt'
             });
 
             const response = await fetch(`${this.DDG_HTML}`, {
@@ -187,10 +173,7 @@ class SearchBrain {
             });
 
             const html = await response.text();
-
-            // Parse results from HTML
-            const results = this._parseHtmlResults(html);
-            return results;
+            return this._parseHtmlResults(html);
 
         } catch (error) {
             console.error(`   ❌ HTML Search error: ${error.message}`);
@@ -198,26 +181,16 @@ class SearchBrain {
         }
     }
 
-    /**
-     * Parse search results from DuckDuckGo HTML
-     */
     _parseHtmlResults(html) {
         const results = [];
 
-        // Extract result blocks using regex (simple approach without DOM parser)
         const resultPattern = /<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>(.*?)<\/a>/gi;
 
         let match;
         while ((match = resultPattern.exec(html)) !== null && results.length < 5) {
             let url = match[1];
-
-            // Skip DuckDuckGo ads (/y.js?...)
             if (url.includes('/y.js')) continue;
-
-            // Handle protocol-relative URLs
             if (url.startsWith('//')) url = 'https:' + url;
-
-            // Decode internal DDG redirects
             url = this._decodeRedirectUrl(url);
 
             const title = this._stripHtml(match[2]);
@@ -228,7 +201,6 @@ class SearchBrain {
             }
         }
 
-        // Fallback: simpler pattern
         if (results.length === 0) {
             const snippetPattern = /<a[^>]*class="result__snippet"[^>]*>(.*?)<\/a>/gi;
             let sMatch;
@@ -243,60 +215,39 @@ class SearchBrain {
         return results;
     }
 
-    /**
-     * Format instant answer for WhatsApp
-     */
     _formatInstantAnswer(result, isGroup) {
         return formatter.formatInstantAnswer(result, isGroup);
     }
 
-    /**
-     * Format web search results for WhatsApp
-     */
     _formatSearchResults(results, query, isGroup) {
         return formatter.formatSearchResults(results, query, isGroup);
     }
 
-    /**
-     * Clean user query for search
-     */
     _cleanQuery(message) {
         let query = message;
-
-        // Remove common bot addressing patterns
         query = query.replace(/(manthan|bot|bro|dude|bhai|yaar)\s*/gi, '');
         query = query.replace(/(search|google|look up|find|what is|what's|tell me about|explain)/gi, '');
         query = query.replace(/(please|pls|can you|could you|will you)/gi, '');
-
-        // Clean up
         query = query.replace(/[?!.]+/g, '').trim();
-
         return query;
     }
 
     /**
-     * Check if a message is a search request
+     * Check if a message is a SEARCH request
+     * 
+     * STRICT: Only triggers when user explicitly says "search", "google", "look up" or "find"
+     * Does NOT trigger on general questions, "how to", "what is", etc.
      */
     isSearchRequest(message, intent) {
-        const msg = message.toLowerCase();
+        const msg = message.toLowerCase().trim();
 
-        // Explicit search commands
-        if (/^(search|google|look up|find)\s+/i.test(msg)) return true;
+        // ONLY explicit search commands — nothing else
+        if (/\b(search|google|look\s*up)\b/i.test(msg)) return true;
 
-        // Questions that need web search (not personal KB)
-        if (intent?.primary === 'question' && intent?.subIntent === 'factual') {
-            // Check if it's NOT about Manthan (handled by knowledge brain)
-            if (!/manthan|your|you|tum|aap/i.test(msg)) return true;
-        }
+        // "find" only when clearly a search intent (e.g. "find me info on X")
+        if (/^find\s+(me\s+)?(info|information|details|about|out)\b/i.test(msg)) return true;
 
-        // Current events / news
-        if (/(latest|news|current|today|recent|trending|what happened)/i.test(msg)) return true;
-
-        // Technical questions
-        if (/(how to|how do|what is|what are|define|meaning of|difference between)/i.test(msg)) {
-            if (!/manthan|your|you/i.test(msg)) return true;
-        }
-
+        // Everything else — NOT a search. Let chat-brain handle it.
         return false;
     }
 
@@ -338,7 +289,6 @@ class SearchBrain {
 
     _setCache(key, data) {
         this.cache.set(key, { data, timestamp: Date.now() });
-        // Limit cache size
         if (this.cache.size > 100) {
             const firstKey = this.cache.keys().next().value;
             this.cache.delete(firstKey);

@@ -1,23 +1,17 @@
 /**
  * Formatter Engine
- * Professional, clean formatting for all WhatsApp bot outputs
+ * Clean formatting for WhatsApp bot outputs
  * Uses WhatsApp markdown: *bold*, _italic_, ```monospace```, ~strikethrough~
  */
 
 class Formatter {
     constructor() {
-        this.SEPARATOR = '━━━━━━━━━━━━━━━━━━━━';
         this.THIN_SEP = '─────────────────────';
         console.log('🎨 Formatter Engine initialized');
     }
 
-    // ═══════════════════════════════════════
-    // SEARCH RESULTS
-    // ═══════════════════════════════════════
+    // ═══ SEARCH RESULTS ═══
 
-    /**
-     * Format instant answer (definition, fact, calculation)
-     */
     formatInstantAnswer(result, isGroup = false) {
         if (isGroup) {
             const text = result.text.length > 150
@@ -46,9 +40,6 @@ class Formatter {
         return msg;
     }
 
-    /**
-     * Format web search results
-     */
     formatSearchResults(results, query, isGroup = false) {
         if (!results || results.length === 0) return null;
 
@@ -73,9 +64,7 @@ class Formatter {
         return msg;
     }
 
-    // ═══════════════════════════════════════
-    // YOUTUBE RESULTS
-    // ═══════════════════════════════════════
+    // ═══ YOUTUBE RESULTS ═══
 
     formatYouTubeResults(videos, query, isGroup = false) {
         if (!videos || videos.length === 0) return null;
@@ -105,109 +94,14 @@ class Formatter {
         return msg;
     }
 
-    // ═══════════════════════════════════════
-    // NEWS
-    // ═══════════════════════════════════════
+    // ═══ IMAGE / VISION ═══
 
-    formatNews(articles, topic, isGroup = false) {
-        if (!articles || articles.length === 0) return null;
-
-        if (isGroup) {
-            const top = articles[0];
-            return `📰 *${top.title}*\n🔗 ${this._cleanUrl(top.link)}`;
-        }
-
-        let msg = `📰 *${topic ? topic + ' ' : ''}News Headlines*\n${this.THIN_SEP}\n`;
-
-        articles.slice(0, 5).forEach((a, i) => {
-            msg += `\n*${i + 1}.* ${a.title}`;
-            if (a.source) msg += `\n   📌 _${a.source}_`;
-            if (a.link) msg += `\n   🔗 ${this._cleanUrl(a.link)}`;
-            if (i < Math.min(articles.length, 5) - 1) msg += '\n';
-        });
-
-        return msg;
-    }
-
-    // ═══════════════════════════════════════
-    // JOKES
-    // ═══════════════════════════════════════
-
-    formatJoke(joke) {
-        if (!joke) return null;
-
-        if (joke.type === 'twopart') {
-            return `😂 ${joke.setup}\n\n👉 _${joke.delivery}_`;
-        }
-
-        return `😂 ${joke.joke}`;
-    }
-
-    // ═══════════════════════════════════════
-    // FINANCE
-    // ═══════════════════════════════════════
-
-    formatFinanceData(data, isGroup = false) {
-        if (!data) return null;
-
-        if (isGroup) {
-            const arrow = data.change >= 0 ? '📈' : '📉';
-            return `${arrow} *${data.name}*: $${data.price} (${data.change >= 0 ? '+' : ''}${data.changePercent}%)`;
-        }
-
-        let msg = `💰 *${data.name}* (${data.symbol})\n${this.THIN_SEP}\n\n`;
-        const arrow = data.change >= 0 ? '📈' : '📉';
-        msg += `${arrow} *Price:* $${data.price}\n`;
-        msg += `📊 *24h Change:* ${data.change >= 0 ? '+' : ''}${data.changePercent}%\n`;
-        if (data.marketCap) msg += `🏦 *Market Cap:* $${this._formatLargeNumber(data.marketCap)}\n`;
-        if (data.volume) msg += `📦 *Volume:* $${this._formatLargeNumber(data.volume)}\n`;
-        if (data.high) msg += `⬆️ *24h High:* $${data.high}\n`;
-        if (data.low) msg += `⬇️ *24h Low:* $${data.low}`;
-
-        return msg;
-    }
-
-    // ═══════════════════════════════════════
-    // IMAGE / VISION
-    // ═══════════════════════════════════════
-
-    formatImageAnalysis(analysis, hasCaption = false) {
+    formatImageAnalysis(analysis) {
         if (!analysis) return null;
-
-        // Vision responses are already natural language from Gemini
-        // Just ensure clean formatting
         return analysis;
     }
 
-    // ═══════════════════════════════════════
-    // GENERIC HELPERS
-    // ═══════════════════════════════════════
-
-    /**
-     * Wrap text with a header
-     */
-    withHeader(emoji, title, body) {
-        return `${emoji} *${title}*\n${this.THIN_SEP}\n\n${body}`;
-    }
-
-    /**
-     * Make a numbered list
-     */
-    numberedList(items, formatter = null) {
-        return items.map((item, i) => {
-            const text = formatter ? formatter(item) : item;
-            return `*${i + 1}.* ${text}`;
-        }).join('\n\n');
-    }
-
-    /**
-     * Make a bullet list
-     */
-    bulletList(items) {
-        return items.map(item => `• ${item}`).join('\n');
-    }
-
-    // ─── Internal Utilities ─────────────────
+    // ═══ UTILITIES ═══
 
     _decodeHtml(text) {
         if (!text) return '';
@@ -226,14 +120,6 @@ class Formatter {
         return views.toString();
     }
 
-    _formatLargeNumber(num) {
-        if (num >= 1e12) return `${(num / 1e12).toFixed(2)}T`;
-        if (num >= 1e9) return `${(num / 1e9).toFixed(2)}B`;
-        if (num >= 1e6) return `${(num / 1e6).toFixed(2)}M`;
-        if (num >= 1e3) return `${(num / 1e3).toFixed(1)}K`;
-        return num.toString();
-    }
-
     /**
      * Clean long URLs by removing tracking/garbage params
      */
@@ -245,27 +131,26 @@ class Formatter {
         try {
             const u = new URL(target);
 
-            // Skip cleaning for DDG internal redirects that we might have missed
             if (u.pathname.includes('/y.js')) return url;
 
-            // Keep youtube video IDs
+            // YouTube → short youtu.be link
             if (u.hostname.includes('youtube.com') && u.searchParams.has('v')) {
                 return `https://youtu.be/${u.searchParams.get('v')}`;
             }
 
-            // Keep google search queries but nothing else
+            // Google search → clean query only
             if (u.hostname.includes('google.com') && u.pathname.includes('/search')) {
                 const q = u.searchParams.get('q');
                 return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
             }
 
-            // For everything else, strip query params to keep it clean
+            // Everything else → strip query params
             u.search = '';
             u.hash = '';
 
-            return u.toString().replace(/\/$/, ''); // Remove trailing slash
+            return u.toString().replace(/\/$/, '');
         } catch (e) {
-            return url; // Return original if parsing fails
+            return url;
         }
     }
 }

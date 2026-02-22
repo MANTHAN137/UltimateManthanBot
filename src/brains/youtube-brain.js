@@ -3,11 +3,7 @@
  * Search and recommend YouTube videos
  * Uses YouTube Data API v3 (with key) or Invidious API (no key fallback)
  * 
- * Capabilities:
- * - Search videos by query
- * - Get video details (title, views, duration)
- * - Format recommendations with short explanations
- * - Detect YouTube-related queries
+ * IMPORTANT: Only triggers when user explicitly mentions "youtube", "yt", or "video(s)"
  */
 
 const formatter = require('../engines/formatter');
@@ -16,7 +12,6 @@ class YouTubeBrain {
     constructor() {
         this.apiKey = process.env.YOUTUBE_API_KEY || null;
         this.YOUTUBE_API = 'https://www.googleapis.com/youtube/v3';
-        // Invidious instances as fallback (no API key needed)
         this.INVIDIOUS_INSTANCES = [
             'https://vid.puffyan.us',
             'https://invidious.snopyta.org',
@@ -31,16 +26,12 @@ class YouTubeBrain {
 
     /**
      * Process a YouTube search request
-     * @param {string} query - Search query
-     * @param {boolean} isGroup - Group context
-     * @returns {{ response: string, source: string, videos: Array }}
      */
     async process(query, isGroup = false) {
         const cleanQuery = this._cleanQuery(query);
 
         if (!cleanQuery || cleanQuery.length < 2) return null;
 
-        // Cache check
         const cached = this._getCache(cleanQuery);
         if (cached) {
             console.log(`   📹 YouTube: Cache hit for "${cleanQuery}"`);
@@ -59,8 +50,7 @@ class YouTubeBrain {
             }
 
             if (!videos || videos.length === 0) {
-                // Always give the user a direct YouTube search link
-                const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(cleanQuery)}`;
+                const searchUrl = `https://youtu.be/results?search_query=${encodeURIComponent(cleanQuery)}`;
                 return {
                     response: `couldn't pull specific videos rn, but try searching here: ${searchUrl}`,
                     source: 'youtube-brain/link',
@@ -164,36 +154,40 @@ class YouTubeBrain {
         return [];
     }
 
-    /**
-     * Format results for WhatsApp message
-     */
     _formatResults(videos, query, isGroup) {
         return formatter.formatYouTubeResults(videos, query, isGroup);
     }
 
     /**
      * Check if a message is a YouTube request
+     * 
+     * STRICT: Only triggers when user explicitly mentions youtube/yt/video(s)
+     * AND it's clearly asking for video content, not just mentioning the word
      */
     isYouTubeRequest(message) {
-        const msg = message.toLowerCase();
-        return (
-            /\b(youtube|yt|video|videos|watch|recommend|suggest)\b/i.test(msg) &&
-            !/\b(my channel|my youtube|@3manthan)\b/i.test(msg) // Exclude self-references
-        );
+        const msg = message.toLowerCase().trim();
+
+        // Exclude self-references to owner's channel
+        if (/\b(my channel|my youtube|@3manthan)\b/i.test(msg)) return false;
+
+        // Explicit YouTube requests: "youtube X", "yt X", "send video of X"
+        if (/\b(youtube|yt)\b/i.test(msg)) return true;
+
+        // "video" / "videos" only when asking for content
+        // e.g. "send me a video about cooking", "show video on React", "video of cats"
+        if (/\b(video|videos)\b/i.test(msg) && /\b(send|show|find|search|play|recommend|suggest|about|on|of|for)\b/i.test(msg)) {
+            return true;
+        }
+
+        return false;
     }
 
-    /**
-     * Clean query for YouTube search
-     */
     _cleanQuery(message) {
         let query = message;
-
-        // Remove common bot patterns
         query = query.replace(/(manthan|bot|bro|bhai|yaar|dude)\s*/gi, '');
         query = query.replace(/(search|find|show|recommend|suggest|play)\s*(me\s*)?(a\s*)?(youtube\s*)?(video|videos|vid|yt)?\s*(on|for|about|of)?\s*/gi, '');
         query = query.replace(/(can you|could you|please|pls)\s*/gi, '');
         query = query.replace(/[?!.]+$/g, '');
-
         return query.trim();
     }
 
@@ -204,7 +198,6 @@ class YouTubeBrain {
         const hrs = Math.floor(seconds / 3600);
         const mins = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
-
         if (hrs > 0) return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
         return `${mins}:${String(secs).padStart(2, '0')}`;
     }

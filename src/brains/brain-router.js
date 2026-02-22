@@ -1,7 +1,14 @@
 /**
- * Brain Router v5.0
- * Multi-Brain Architecture - Routes messages to specialized brains
- * Now with: Link Preview, Music, Translation, Games, Finance
+ * Brain Router v6.0 — Simplified & Focused
+ * 
+ * Core Philosophy:
+ *   - Chat Brain (Gemini) handles EVERYTHING by default — like a real human
+ *   - Search ONLY when user explicitly says "search" / "google"
+ *   - YouTube ONLY when user explicitly mentions "youtube" / "video"
+ *   - Translate, Reminder, Todo — kept as useful utilities
+ *   - Removed: games, meme, music, finance, news, joke (unnecessary complexity)
+ *   - Full conversation context maintained via memory store
+ *   - Quoted message handling for "reply to this" feature
  */
 
 const config = require('../utils/config-loader');
@@ -15,18 +22,11 @@ const safetyBrain = require('./safety-brain');
 const searchBrain = require('./search-brain');
 const youtubeBrain = require('./youtube-brain');
 const linkBrain = require('./link-brain');
-const musicBrain = require('./music-brain');
 const translateBrain = require('./translate-brain');
-const gamesBrain = require('./games-brain');
-const financeBrain = require('./finance-brain');
-const newsBrain = require('./news-brain');
-const jokeBrain = require('./joke-brain');
-const visionBrain = require('./vision-brain');
-const memeBrain = require('./meme-brain');
 const todoBrain = require('./todo-brain');
+const visionBrain = require('./vision-brain');
 const humanizer = require('./humanizer');
 const summarizer = require('../engines/summarizer');
-const abTesting = require('../engines/ab-testing');
 const reminderEngine = require('../engines/reminder-engine');
 const analyticsEngine = require('../engines/analytics-engine');
 
@@ -34,38 +34,32 @@ class BrainRouter {
     constructor() {
         this._lastMessageTime = new Map();
 
-        console.log('🧠 Brain Router v6.0 initialized with Multi-Brain Architecture');
-        console.log('   ├─ 💬 Chat Brain (Gemini AI)');
+        console.log('🧠 Brain Router v6.0 initialized (Simplified)');
+        console.log('   ├─ 💬 Chat Brain (Gemini AI) — handles everything');
         console.log('   ├─ 📚 Knowledge Brain (NLP + KB)');
-        console.log('   ├─ 🔍 Search Brain (DuckDuckGo)');
-        console.log('   ├─ 📹 YouTube Brain');
+        console.log('   ├─ 🔍 Search Brain (explicit only)');
+        console.log('   ├─ 📹 YouTube Brain (explicit only)');
         console.log('   ├─ 🔗 Link Preview Brain');
-        console.log('   ├─ 🎵 Music Brain');
-        console.log('   ├─ 🌐 Translation Brain (Gemini)');
-        console.log('   ├─ 🎮 Games Brain');
-        console.log('   ├─ 💰 Finance Brain (CoinGecko)');
-        console.log('   ├─ 📰 News Brain (Google News)');
-        console.log('   ├─ 😂 Joke Brain (JokeAPI)');
-        console.log('   ├─ 👁️ Vision Brain (Gemini Vision)');
-        console.log('   ├─ 🖼️ Meme Brain (Reddit)');
+        console.log('   ├─ 🌐 Translation Brain');
+        console.log('   ├─ 📝 Todo Brain');
+        console.log('   ├─ 👁️ Vision Brain');
+        console.log('   ├─ ⏰ Reminder Engine');
         console.log('   ├─ 🤝 Social Brain');
         console.log('   ├─ 🛡️ Safety Brain');
-        console.log('   ├─ ⏰ Reminder Engine');
-        console.log('   ├─ 📝 Conversation Summarizer');
-        console.log('   └─ 🧪 A/B Testing Engine');
+        console.log('   └─ 🎭 Humanizer');
     }
 
     /**
-     * Process an incoming message through the full intelligence pipeline
+     * Process an incoming message through the intelligence pipeline
      * 
      * Flow:
-     * 1. A/B Engagement tracking (from previous message)
-     * 2. Intent + Emotion Detection (NLP)
+     * 1. Image → Vision Brain (highest priority)
+     * 2. Intent + Emotion Detection
      * 3. Memory Fetch (Context + Person)
      * 4. Conversation Summarization (if long)
      * 5. Brain Routing Decision
-     * 6. Selected Brain generates response (with A/B overrides)
-     * 7. Safety Brain filters
+     * 6. Selected Brain generates response
+     * 7. Safety Filter
      * 8. Humanizer adjusts tone/delay
      * 9. Store + return
      */
@@ -80,18 +74,14 @@ class BrainRouter {
             try {
                 const result = await visionBrain.process(imageBuffer, imageCaption || message, { isGroup, contactId });
                 if (result && result.response) {
-                    // Safety filter
                     result.response = safetyBrain.filter(result.response, imageCaption || 'image', { primary: 'image_analysis' });
-                    // Humanize
                     result.response = humanizer.humanize(result.response, {
                         isGroup,
                         timeContext: config.getTimeContext()
                     });
                     result.typingDelay = humanizer.getTypingDelay(result.response, { isGroup, timeContext: config.getTimeContext() });
-                    // Store
                     memoryStore.addConversationMessage(contactId, 'user', `[image] ${imageCaption || ''}`, { isGroup });
                     memoryStore.addConversationMessage(contactId, 'assistant', result.response, { isGroup });
-                    // Analytics
                     const processingTime = Date.now() - startTime;
                     analyticsEngine.record({ contactId, intent: 'image_analysis', brain: 'vision', responseTime: processingTime, isGroup });
                     return { ...result, processingTime, intent: { primary: 'image_analysis' } };
@@ -101,23 +91,13 @@ class BrainRouter {
             }
         }
 
-        // ═══ STEP 0: A/B Engagement Tracking ═══
-        // If user replied to a previous bot message, that's engagement data
-        const lastTime = this._lastMessageTime.get(contactId);
-        if (lastTime) {
-            const replyTimeMs = startTime - lastTime;
-            const quickReplyBonus = replyTimeMs < 60000 ? 'positive' : 'neutral';
-            abTesting.recordEngagement(contactId, replyTimeMs, quickReplyBonus);
-        }
-
-        // ═══ STEP 1: Intelligence Analysis (NLU) ═══
+        // ═══ STEP 1: Intelligence Analysis ═══
         const intent = intentEngine.analyze(message || imageCaption || '');
         const emotion = emotionEngine.analyze(message || imageCaption || '', contactId);
 
         console.log(`🎯 Intent: ${intent.primary} | 💭 Emotion: ${emotion.primary} (${emotion.intensity})`);
 
         // ═══ STEP 2: Memory & Context ═══
-        // Update contact last seen/info
         if (phoneNumber) {
             memoryStore.updatePersonMemory(contactId, { phoneNumber });
         }
@@ -152,52 +132,22 @@ class BrainRouter {
         const routingDecision = this._route(intent, emotion, isGroup, message, contactId);
         console.log(`   🧠 Routing to: ${routingDecision.brain} (reason: ${routingDecision.reason})`);
 
-        // ═══ STEP 5: Get A/B Test Config Overrides ═══
-        const abOverrides = abTesting.getConfigOverrides(contactId);
-
-        // ═══ STEP 6: Generate Response ═══
-        // Base context for ANY AI call
+        // ═══ STEP 5: Generate Response ═══
         const aiContext = {
             isGroup, intent, emotion, personMemory, isNewContact,
-            conversationRecap, abOverrides, quotedText, imageBuffer
+            conversationRecap, quotedText, imageBuffer
         };
 
         let result;
 
         try {
             switch (routingDecision.brain) {
-                case 'games':
-                    result = gamesBrain.process(message, contactId);
-                    break;
-
                 case 'reminder':
                     result = reminderEngine.process(message, contactId);
                     break;
 
-                case 'news': {
-                    const findings = await newsBrain.process(message, isGroup);
-                    result = await chatBrain.process(contactId, message, {
-                        ...aiContext,
-                        externalFindings: findings?.response || findings
-                    });
-                    break;
-                }
-
-                case 'joke': {
-                    const findings = await jokeBrain.process(message, isGroup);
-                    result = await chatBrain.process(contactId, message, {
-                        ...aiContext,
-                        externalFindings: findings?.response || findings
-                    });
-                    break;
-                }
-
                 case 'todo':
                     result = await todoBrain.process(message, contactId);
-                    break;
-
-                case 'meme':
-                    result = await memeBrain.process(message, isGroup);
                     break;
 
                 case 'summarize': {
@@ -227,20 +177,6 @@ class BrainRouter {
                     result = await translateBrain.process(message, isGroup);
                     break;
 
-                case 'music':
-                    result = await musicBrain.process(message, isGroup);
-                    if (!result) result = await chatBrain.process(contactId, message, aiContext);
-                    break;
-
-                case 'finance': {
-                    const findings = await financeBrain.process(message, isGroup);
-                    result = await chatBrain.process(contactId, message, {
-                        ...aiContext,
-                        externalFindings: findings?.response || findings
-                    });
-                    break;
-                }
-
                 case 'search': {
                     const findings = await searchBrain.process(message, intent, isGroup);
                     result = await chatBrain.process(contactId, message, {
@@ -262,7 +198,6 @@ class BrainRouter {
                 case 'knowledge': {
                     const findings = await knowledgeBrain.process(message, intent);
                     if (findings) {
-                        // Let Gemini handle the knowledge response naturally
                         result = await chatBrain.process(contactId, message, {
                             ...aiContext,
                             externalFindings: findings.response
@@ -285,8 +220,25 @@ class BrainRouter {
         } catch (error) {
             console.error(`   ❌ ${routingDecision.brain} Brain failed:`, error.message);
 
-            // Fallback chain: knowledge → social → hardcoded
-            result = await knowledgeBrain.process(message, intent);
+            // ═══ SMART FALLBACK ═══
+            // If Gemini (chat brain) failed → try answering via web search
+            if (routingDecision.brain === 'chat' || routingDecision.brain === 'knowledge') {
+                console.log('   🔄 Gemini failed, falling back to web search...');
+                try {
+                    const searchResult = await searchBrain.process(message, intent, isGroup);
+                    if (searchResult && searchResult.response) {
+                        result = searchResult;
+                        result.source = 'fallback-search';
+                    }
+                } catch (searchErr) {
+                    console.error('   ❌ Fallback search also failed:', searchErr.message);
+                }
+            }
+
+            // If search fallback also failed → knowledge → social → hardcoded
+            if (!result) {
+                result = await knowledgeBrain.process(message, intent);
+            }
             if (!result) {
                 result = socialBrain.process(message, intent, emotion, isGroup);
             }
@@ -299,12 +251,12 @@ class BrainRouter {
             }
         }
 
-        // ═══ STEP 7: Safety Filter ═══
+        // ═══ STEP 6: Safety Filter ═══
         if (result && result.response) {
             result.response = safetyBrain.filter(result.response, message, intent);
         }
 
-        // ═══ STEP 8: Humanize ═══
+        // ═══ STEP 7: Humanize ═══
         if (result && result.response) {
             result.response = humanizer.humanize(result.response, {
                 isGroup,
@@ -321,20 +273,19 @@ class BrainRouter {
             });
         }
 
-        // ═══ STEP 9: Store response + track timing ═══
+        // ═══ STEP 8: Store response ═══
         if (result && result.response) {
             memoryStore.addConversationMessage(contactId, 'assistant', result.response, {
                 isGroup
             });
         }
 
-        // Track timestamp for A/B engagement
         this._lastMessageTime.set(contactId, Date.now());
 
         const processingTime = Date.now() - startTime;
         console.log(`   ⚡ Processed in ${processingTime}ms via ${result?.source || 'unknown'}`);
 
-        // ═══ Analytics tracking ═══
+        // Analytics tracking
         analyticsEngine.record({
             contactId,
             intent: intent.primary,
@@ -353,21 +304,20 @@ class BrainRouter {
     }
 
     /**
-     * Brain routing logic v5.0
-     * Includes: Games, Reminder, Link, Translate, Music, Finance, Search, YouTube
+     * Brain routing logic v6.0 — SIMPLIFIED
+     * 
+     * Default: Chat Brain handles everything (like a real person)
+     * Only route away for EXPLICIT feature requests
      */
     _route(intent, emotion, isGroup, message, contactId) {
-        // ACTIVE GAME SESSION → Games Brain (highest priority)
-        if (contactId && gamesBrain.hasActiveGame(contactId)) {
-            return { brain: 'games', reason: 'active game session' };
-        }
+        const msg = message?.toLowerCase() || '';
 
         // SPAM → Social Brain
         if (intent.primary === 'spam') {
             return { brain: 'social', reason: 'spam detected' };
         }
 
-        // Todo / task list requests (check before reminder since patterns overlap)
+        // Todo / task list requests
         if (todoBrain.isTodoRequest(message)) {
             return { brain: 'todo', reason: 'todo request' };
         }
@@ -377,34 +327,9 @@ class BrainRouter {
             return { brain: 'reminder', reason: 'reminder request' };
         }
 
-        // Game requests
-        if (gamesBrain.isGameRequest(message)) {
-            return { brain: 'games', reason: 'game request' };
-        }
-
         // Translation requests
         if (translateBrain.isTranslateRequest(message)) {
             return { brain: 'translate', reason: 'translation request' };
-        }
-
-        // Finance/crypto/stock requests
-        if (financeBrain.isFinanceRequest(message)) {
-            return { brain: 'finance', reason: 'finance request' };
-        }
-
-        // News requests
-        if (newsBrain.isNewsRequest(message)) {
-            return { brain: 'news', reason: 'news request' };
-        }
-
-        // Joke requests
-        if (jokeBrain.isJokeRequest(message)) {
-            return { brain: 'joke', reason: 'joke request' };
-        }
-
-        // Meme requests
-        if (memeBrain.isMemeRequest(message)) {
-            return { brain: 'meme', reason: 'meme request' };
         }
 
         // Summarize requests
@@ -412,14 +337,9 @@ class BrainRouter {
             return { brain: 'summarize', reason: 'summary request' };
         }
 
-        // Music requests (before YouTube to catch song-specific queries)
-        if (musicBrain.isMusicRequest(message)) {
-            return { brain: 'music', reason: 'music request' };
-        }
-
-        // YouTube requests
+        // YouTube requests (ONLY when user explicitly mentions youtube/video)
         if (youtubeBrain.isYouTubeRequest(message)) {
-            return { brain: 'youtube', reason: 'youtube request detected' };
+            return { brain: 'youtube', reason: 'explicit youtube request' };
         }
 
         // Link preview (URL in message)
@@ -427,13 +347,12 @@ class BrainRouter {
             return { brain: 'link', reason: 'URL detected in message' };
         }
 
-        // Web search requests
+        // Web search (ONLY when user explicitly says "search" / "google")
         if (searchBrain.isSearchRequest(message, intent)) {
-            return { brain: 'search', reason: 'search request detected' };
+            return { brain: 'search', reason: 'explicit search request' };
         }
 
-        // Greetings, farewells, thanks, casual → let the AI handle them naturally
-        // Birthday/festival — social brain has specific pre-configured responses
+        // Birthday/festival — social brain
         if (['birthday', 'festival'].includes(intent.primary)) {
             return { brain: 'social', reason: 'special occasion' };
         }
@@ -443,28 +362,15 @@ class BrainRouter {
             return { brain: 'knowledge', reason: 'knowledge intent' };
         }
 
-        // Factual questions that might need search
-        if (intent.primary === 'question' && intent.subIntent === 'factual') {
-            if (!/manthan|your|you|tum|aap/i.test(message)) {
-                return { brain: 'search', reason: 'factual question (non-personal)' };
-            }
-        }
-
-        // Everything else → Chat Brain (LLM)
+        // Everything else → Chat Brain (LLM) — acts like a real human
         return { brain: 'chat', reason: 'general conversation' };
     }
 
-    /**
-     * Check if message is a summarize/recap request
-     */
     _isSummarizeRequest(message) {
         const msg = message.toLowerCase();
         return /\b(summarize|summary|summarise|recap|tldr|tl;dr|what did we talk about|chat summary|conversation summary|sum up)\b/i.test(msg);
     }
 
-    /**
-     * Emergency fallback when all brains fail
-     */
     _getEmergencyFallback(intent, emotion) {
         const fallbacks = [
             "hmm let me think about this for a sec",
@@ -481,16 +387,6 @@ class BrainRouter {
         return fallbacks[Math.floor(Math.random() * fallbacks.length)];
     }
 
-    /**
-     * Get A/B test report
-     */
-    getABReport() {
-        return abTesting.getReport();
-    }
-
-    /**
-     * Get daily conversation digest
-     */
     async getDailyDigest() {
         return await summarizer.getDailyDigest();
     }
