@@ -474,6 +474,14 @@ async function startBot() {
                         continue;
                     }
 
+                    // ═══ LOG OWNER MESSAGE TO MEMORY ═══
+                    // So bot has context when the other person replies later
+                    // Role is 'assistant' because from the other person's perspective,
+                    // Manthan's messages are the responses they receive
+                    memoryStore.addConversationMessage(sender, 'assistant', messageText, {
+                        isGroup: isGroup
+                    });
+
                     // Regular owner message → BOT GOES SILENT FOR 30 SECONDS
                     const TAKEOVER_MS = 30000; // 30 seconds silence
                     memoryStore.updateOwnerActivity(sender);
