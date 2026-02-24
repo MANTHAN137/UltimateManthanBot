@@ -8,6 +8,7 @@ const config = require('../utils/config-loader');
 
 class SocialBrain {
     constructor() {
+        this.THIN_SEP = '─────────────────────';
         this.greetingVariants = [
             "yo yarr! what's up? 🤙",
             "hey yarr! kya scene hai?",
@@ -42,8 +43,30 @@ class SocialBrain {
     /**
      * Process social interactions
      */
-    process(message, intent, emotion, isGroup = false) {
+    process(message, intent, emotion, isGroup = false, isHelpRequest = false) {
         const msg = message.toLowerCase().trim();
+
+        // ─── Bot Help / Usage Guide ───────
+        if (isHelpRequest) {
+            const helpMsg = `🤖 *Hey yarr! Here's what I can do:*\n${this.THIN_SEP}\n\n` +
+                `💬 *Chat* — Just text me anything, I'll reply like a real person\n\n` +
+                `🔍 *Search* — Say "search <topic>" or "google <topic>"\n\n` +
+                `📹 *YouTube* — Say "youtube <topic>" or "yt <topic>" to find videos\n\n` +
+                `🌐 *Translate* — Say "translate <text> to <language>"\n\n` +
+                `📝 *Todo* — Say "add todo <task>" or "show my todos"\n\n` +
+                `⏰ *Reminder* — Say "remind me to <task> in <time>"\n\n` +
+                `📋 *Summarize* — Forward a long message and say "summarize this"\n\n` +
+                `👁️ *Image Analysis* — Send an image with @bot to analyze it\n\n` +
+                `🔗 *Link Preview* — Send any link, I'll give you a quick summary\n\n` +
+                `❓ *About Me* — Ask "who is Manthan" or "what do you do"\n\n` +
+                `${this.THIN_SEP}\n💡 _In groups, tag me with @bot or reply to my message!_`;
+            return {
+                response: helpMsg,
+                source: 'social-brain/help',
+                isQuickResponse: false
+            };
+        }
+
 
         // ─── Spam detection ────────────
         if (intent.primary === 'spam') {

@@ -209,7 +209,7 @@ class BrainRouter {
                 }
 
                 case 'social':
-                    result = await socialBrain.process(message, intent, emotion, isGroup);
+                    result = await socialBrain.process(message, intent, emotion, isGroup, routingDecision.isHelpRequest);
                     break;
 
                 case 'chat':
@@ -311,6 +311,14 @@ class BrainRouter {
      */
     _route(intent, emotion, isGroup, message, contactId) {
         const msg = message?.toLowerCase() || '';
+
+        // USER HELP — show bot usage guide
+        // Only when explicitly asking for "help" as the main message (not "help me with X")
+        if (/^\s*(help|commands|features|kya kar sakta|kya kya kar sakta|what can you do|menu)\s*[?!.]*$/i.test(msg) ||
+            /^@?\s*(bot|manthan)\s+(help|commands|features|menu)\s*[?!.]*$/i.test(msg) ||
+            /^(help|commands|features|menu)\s+@?\s*(bot|manthan)\s*[?!.]*$/i.test(msg)) {
+            return { brain: 'social', reason: 'user help request', isHelpRequest: true };
+        }
 
         // SPAM → Social Brain
         if (intent.primary === 'spam') {
