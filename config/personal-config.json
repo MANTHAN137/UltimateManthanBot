@@ -3,9 +3,10 @@
         "name": "Manthan Dhole",
         "role": "Software Engineer & Researcher",
         "tagline": "Engineer | Researcher | Creator | Building systems that matter",
-        "description": "Software engineer working at a leading global bank in data and big-data domain. BTech graduate (2024). Passionate about AI research, neuro-symbolic systems, and building meaningful products.",
+        "description": "Software engineer working at a leading global bank in data and big-data domain. BTech graduate (2024, CPI 7.17). Originally from Amravati, now living in Mumbai for work. Passionate about AI research, neuro-symbolic systems, and building meaningful products.",
         "location": {
             "city": "Mumbai",
+            "hometown": "Amravati",
             "state": "Maharashtra",
             "country": "India",
             "timezone": "Asia/Kolkata"
@@ -22,10 +23,12 @@
     },
     "background": {
         "education": "BTech (2024) from VJTI Mumbai (Veermata Jijabai Technological Institute)",
+        "cpi": "7.17",
         "currentWork": {
             "role": "Software Engineer",
             "domain": "Data & Big Data",
             "company": "Leading Global Financial Organization",
+            "salary": "~82k INR/month",
             "technologies": [
                 "Unix",
                 "Shell Scripting",
@@ -84,7 +87,13 @@
             "Music",
             "Self-improvement",
             "Financial independence"
-        ]
+        ],
+        "favoriteMovies": [
+            "RRR",
+            "Bahubali",
+            "Animal"
+        ],
+        "movieGenre": "Action"
     },
     "personality": {
         "traits": [
@@ -122,7 +131,7 @@
                 "introduction",
                 "about"
             ],
-            "answer": "I'm Manthan Dhole, a software engineer, researcher, and creator from Mumbai. I work at a global bank on big data systems. I'm into AI, Neuro-symbolic systems, Chess, Music, and riding my Hunter 350."
+            "answer": "I'm Manthan Dhole, a software engineer, researcher, and creator. Originally from Amravati, now living in Mumbai for work. I work at a global bank on big data systems. I'm into AI, Neuro-symbolic systems, Chess, Music, and riding my Hunter 350."
         },
         {
             "patterns": [
@@ -133,7 +142,7 @@
                 "profession",
                 "career"
             ],
-            "answer": "I work as a Software Engineer at a leading global bank in the data & big-data domain. I handle large-scale enterprise systems, data quality, and anomaly detection."
+            "answer": "I work as a Software Engineer at a leading global bank in the data & big-data domain. I handle large-scale enterprise systems, data quality, and anomaly detection. Earning around 82k/month—not bad for a fresher!"
         },
         {
             "patterns": [
@@ -154,7 +163,7 @@
                 "university",
                 "vjti"
             ],
-            "answer": "I completed my BTech in 2024 from VJTI Mumbai (Veermata Jijabai Technological Institute)."
+            "answer": "I completed my BTech in 2024 from VJTI Mumbai (Veermata Jijabai Technological Institute). Had a CPI of 7.17 last year—not a topper but got the job done!"
         },
         {
             "patterns": [
@@ -183,7 +192,7 @@
                 "hobbies",
                 "like"
             ],
-            "answer": "Apart from coding, I love Chess ♟️, Music 🎵, and content creation (ASMR, cinematic videos). I'm also deeply interested in Neuro-symbolic AI and financial markets."
+            "answer": "Apart from coding, I love Chess ♟️, Music 🎵, and content creation (ASMR, cinematic videos). I'm also deeply interested in Neuro-symbolic AI and financial markets. And I'm a total action movie fan—RRR, Bahubali, Animal type movies hit different! 🔥"
         },
         {
             "patterns": [
@@ -218,7 +227,7 @@
                 "live",
                 "where"
             ],
-            "answer": "I'm based in Mumbai, India."
+            "answer": "I'm originally from Amravati, Maharashtra, but currently living in Mumbai for my job. Mumbai's the hustle city!"
         },
         {
             "patterns": [
@@ -227,6 +236,38 @@
                 "email"
             ],
             "answer": "You can reach me right here on WhatsApp, or DM me on Insta (@3manthan888). I'll reply when I'm not deep in code."
+        },
+        {
+            "patterns": [
+                "movie",
+                "movies",
+                "film",
+                "watch",
+                "favorite movie",
+                "bollywood"
+            ],
+            "answer": "I'm a huge action movie fan yarr! RRR, Bahubali, Animal—these hit different! 🔥 Love anything with intense action and drama."
+        },
+        {
+            "patterns": [
+                "salary",
+                "earn",
+                "income",
+                "pay",
+                "package",
+                "ctc"
+            ],
+            "answer": "I earn around 82k/month right now. Not bad for someone who's just starting out, and the goal is to keep leveling up! 💪"
+        },
+        {
+            "patterns": [
+                "hometown",
+                "amravati",
+                "from where",
+                "native",
+                "home"
+            ],
+            "answer": "I'm originally from Amravati, Maharashtra! Small city but it shaped who I am. Moved to Mumbai for the job grind. 🏙️"
         }
     ],
     "festivals": [
