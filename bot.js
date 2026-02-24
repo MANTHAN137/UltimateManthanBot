@@ -48,20 +48,35 @@ app.get('/', (req, res) => {
         return res.send(`
             <html><body style="background:#111;color:#fff;font-family:monospace;text-align:center;padding:40px">
                 <h1>🧠 Manthan AI v6.0</h1>
-                <p>WhatsApp is either connected or waiting for QR generation...</p>
-                <p>Refresh in a few seconds.</p>
+                <p>⏳ Waiting for QR code generation...</p>
+                <p style="color:#888">This page auto-refreshes every 3 seconds</p>
+                <div style="margin:20px;font-size:24px" id="spin">⟳</div>
+                <script>
+                    setTimeout(() => location.reload(), 3000);
+                    setInterval(() => { document.getElementById('spin').style.transform = 'rotate(' + (Date.now()/5 % 360) + 'deg)'; }, 50);
+                </script>
             </body></html>
         `);
     }
 
     QRCode.toDataURL(latestQR, (err, url) => {
+        if (err) {
+            return res.send(`
+                <html><body style="background:#111;color:#f55;font-family:monospace;text-align:center;padding:40px">
+                    <h1>❌ QR Generation Error</h1>
+                    <p>${err.message}</p>
+                    <script>setTimeout(() => location.reload(), 5000);</script>
+                </body></html>
+            `);
+        }
         res.send(`
             <html><body style="background:#111;color:#fff;font-family:monospace;text-align:center;padding:40px">
                 <h1>🧠 Manthan AI v6.0</h1>
                 <h2>📱 Scan to Connect WhatsApp</h2>
                 <img src="${url}" style="width:300px;border-radius:12px;margin:20px" />
-                <p style="color:#888">This page auto-refreshes every 30 seconds</p>
-                <script>setTimeout(() => location.reload(), 30000)</script>
+                <p style="color:#0f0">✅ QR Ready — scan with WhatsApp!</p>
+                <p style="color:#888">Page refreshes every 20 seconds</p>
+                <script>setTimeout(() => location.reload(), 20000)</script>
             </body></html>
         `);
     });
