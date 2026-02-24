@@ -299,7 +299,7 @@ async function startBot() {
     const sock = makeWASocket({
         auth: state,
         syncFullHistory: false,
-        printQRInTerminal: false
+        printQRInTerminal: true
     });
 
     globalSock = sock;
