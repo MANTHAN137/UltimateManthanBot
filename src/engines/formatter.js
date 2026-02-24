@@ -71,18 +71,24 @@ class Formatter {
 
         if (isGroup) {
             const top = videos[0];
-            return `🎬 *${this._decodeHtml(top.title)}*\n▶️ ${this._cleanUrl(top.url)}`;
+            const meta = [];
+            if (top.duration) meta.push(`⏱️ ${top.duration}`);
+            if (top.views) meta.push(`👁️ ${this._formatViews(top.views)}`);
+            const metaStr = meta.length > 0 ? `\n   ${meta.join('  •  ')}` : '';
+            return `🎬 *${this._decodeHtml(top.title)}*${metaStr}\n▶️ ${this._cleanUrl(top.url)}`;
         }
 
         let msg = `🎬 *YouTube Results for "${query}"*\n${this.THIN_SEP}\n`;
 
-        const topVideos = videos.slice(0, 3);
+        const topVideos = videos.slice(0, 5);
         topVideos.forEach((v, i) => {
-            msg += `\n*${i + 1}.* ${this._decodeHtml(v.title)}`;
+            const label = i === 0 ? ' 🏆' : '';
+            msg += `\n*${i + 1}.* ${this._decodeHtml(v.title)}${label}`;
             const meta = [];
             if (v.channel) meta.push(`📺 ${v.channel}`);
             if (v.duration) meta.push(`⏱️ ${v.duration}`);
             if (v.views) meta.push(`👁️ ${this._formatViews(v.views)}`);
+            if (v.likes) meta.push(`👍 ${this._formatViews(v.likes)}`);
             if (meta.length > 0) msg += `\n   ${meta.join('  •  ')}`;
             msg += `\n   ▶️ ${this._cleanUrl(v.url)}`;
             if (i < topVideos.length - 1) msg += '\n';

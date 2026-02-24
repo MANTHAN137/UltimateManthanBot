@@ -1,7 +1,15 @@
 /**
- * YouTube Brain
- * Search and recommend YouTube videos
+ * YouTube Brain v2.0
+ * Search and recommend YouTube videos with improved relevance
  * Uses YouTube Data API v3 (with key) or Invidious API (no key fallback)
+ * 
+ * Improvements over v1:
+ *   - Region-targeted search (India) for better local relevance
+ *   - Video statistics enrichment (views, likes) via API for relevance ranking
+ *   - Smart query enhancement — detects language (Hindi/English) and adds context
+ *   - Better Invidious instance list (updated, working instances)
+ *   - Relevance scoring to rank results better
+ *   - Shows top 5 results in DMs, top 1 in groups
  * 
  * IMPORTANT: Only triggers when user explicitly mentions "youtube", "yt", or "video(s)"
  */
@@ -13,15 +21,17 @@ class YouTubeBrain {
         this.apiKey = process.env.YOUTUBE_API_KEY || null;
         this.YOUTUBE_API = 'https://www.googleapis.com/youtube/v3';
         this.INVIDIOUS_INSTANCES = [
-            'https://vid.puffyan.us',
-            'https://invidious.snopyta.org',
+            'https://inv.nadeko.net',
+            'https://invidious.nerdvpn.de',
+            'https://invidious.jing.rocks',
             'https://yewtu.be',
-            'https://inv.nadeko.net'
+            'https://inv.tux.pizza',
+            'https://invidious.privacyredirect.com'
         ];
         this.cache = new Map();
         this.CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
-        console.log(`📹 YouTube Brain initialized ${this.apiKey ? '(API Key ✓)' : '(Invidious fallback)'}`);
+        console.log(`📹 YouTube Brain v2.0 initialized ${this.apiKey ? '(API Key ✓)' : '(Invidious fallback)'}`);
     }
 
     /**
@@ -43,6 +53,11 @@ class YouTubeBrain {
 
             if (this.apiKey) {
                 videos = await this._searchYouTubeAPI(cleanQuery);
+
+                // Enrich with statistics (views, likes) for better relevance
+                if (videos && videos.length > 0) {
+                    videos = await this._enrichWithStats(videos);
+                }
             }
 
             if (!videos || videos.length === 0) {
@@ -50,13 +65,16 @@ class YouTubeBrain {
             }
 
             if (!videos || videos.length === 0) {
-                const searchUrl = `https://youtu.be/results?search_query=${encodeURIComponent(cleanQuery)}`;
+                const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(cleanQuery)}`;
                 return {
-                    response: `couldn't pull specific videos rn, but try searching here: ${searchUrl}`,
+                    response: `couldn't pull specific videos rn yarr, but try searching here: ${searchUrl}`,
                     source: 'youtube-brain/link',
                     isQuickResponse: true
                 };
             }
+
+            // Rank videos by relevance score
+            videos = this._rankByRelevance(videos, cleanQuery);
 
             const result = {
                 response: this._formatResults(videos, cleanQuery, isGroup),
@@ -75,17 +93,22 @@ class YouTubeBrain {
     }
 
     /**
-     * YouTube Data API v3 search
+     * YouTube Data API v3 search — improved with region targeting
      */
     async _searchYouTubeAPI(query) {
+        const enhancedQuery = this._enhanceQuery(query);
+
         const params = new URLSearchParams({
             part: 'snippet',
-            q: query,
+            q: enhancedQuery,
             type: 'video',
-            maxResults: '5',
+            maxResults: '8',         // Fetch more, then rank and pick top 5
             key: this.apiKey,
-            relevanceLanguage: 'en',
-            safeSearch: 'moderate'
+            regionCode: 'IN',        // Target India for local relevance
+            relevanceLanguage: 'en', // English + Hindi content
+            safeSearch: 'moderate',
+            order: 'relevance',
+            videoEmbeddable: 'true'  // Only embeddable (real) videos
         });
 
         const response = await fetch(`${this.YOUTUBE_API}/search?${params}`, {
@@ -102,25 +125,81 @@ class YouTubeBrain {
 
         return data.items.map(item => ({
             id: item.id.videoId,
-            title: item.snippet.title,
+            title: this._decodeHtml(item.snippet.title),
             channel: item.snippet.channelTitle,
-            description: item.snippet.description?.substring(0, 150) || '',
-            thumbnail: item.snippet.thumbnails?.default?.url || '',
+            description: item.snippet.description?.substring(0, 200) || '',
+            thumbnail: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || '',
             url: `https://youtu.be/${item.id.videoId}`,
-            publishedAt: item.snippet.publishedAt
+            publishedAt: item.snippet.publishedAt,
+            liveBroadcastContent: item.snippet.liveBroadcastContent || 'none'
         }));
     }
 
     /**
-     * Invidious API search (no key needed)
+     * Enrich videos with statistics (views, likes, duration) from YouTube API
+     * This allows better relevance ranking
+     */
+    async _enrichWithStats(videos) {
+        if (!this.apiKey || videos.length === 0) return videos;
+
+        try {
+            const videoIds = videos.map(v => v.id).join(',');
+            const params = new URLSearchParams({
+                part: 'statistics,contentDetails',
+                id: videoIds,
+                key: this.apiKey
+            });
+
+            const response = await fetch(`${this.YOUTUBE_API}/videos?${params}`, {
+                signal: AbortSignal.timeout(6000)
+            });
+
+            if (!response.ok) return videos;
+
+            const data = await response.json();
+            if (!data.items) return videos;
+
+            // Map stats back to videos
+            const statsMap = new Map();
+            for (const item of data.items) {
+                statsMap.set(item.id, {
+                    views: parseInt(item.statistics?.viewCount || '0'),
+                    likes: parseInt(item.statistics?.likeCount || '0'),
+                    comments: parseInt(item.statistics?.commentCount || '0'),
+                    duration: this._parseISO8601Duration(item.contentDetails?.duration || '')
+                });
+            }
+
+            return videos.map(v => {
+                const stats = statsMap.get(v.id);
+                if (stats) {
+                    v.views = stats.views;
+                    v.likes = stats.likes;
+                    v.comments = stats.comments;
+                    v.duration = stats.duration;
+                }
+                return v;
+            });
+
+        } catch (error) {
+            console.error(`   ⚠️ Stats enrichment failed: ${error.message}`);
+            return videos;
+        }
+    }
+
+    /**
+     * Invidious API search (no key needed) — updated instances
      */
     async _searchInvidious(query) {
+        const enhancedQuery = this._enhanceQuery(query);
+
         for (const instance of this.INVIDIOUS_INSTANCES) {
             try {
                 const params = new URLSearchParams({
-                    q: query,
+                    q: enhancedQuery,
                     sort_by: 'relevance',
-                    type: 'video'
+                    type: 'video',
+                    region: 'IN'
                 });
 
                 const response = await fetch(`${instance}/api/v1/search?${params}`, {
@@ -134,13 +213,14 @@ class YouTubeBrain {
 
                 if (!Array.isArray(data) || data.length === 0) continue;
 
-                return data.slice(0, 5).map(item => ({
+                return data.slice(0, 8).map(item => ({
                     id: item.videoId,
                     title: item.title,
                     channel: item.author || item.authorId || 'Unknown',
-                    description: item.description?.substring(0, 150) || '',
+                    description: item.description?.substring(0, 200) || '',
                     url: `https://youtu.be/${item.videoId}`,
                     views: item.viewCount || 0,
+                    likes: item.likeCount || 0,
                     duration: this._formatDuration(item.lengthSeconds || 0),
                     publishedAt: item.publishedText || ''
                 }));
@@ -152,6 +232,98 @@ class YouTubeBrain {
         }
 
         return [];
+    }
+
+    /**
+     * Rank videos by relevance score
+     * Considers: title match, view count, recency, engagement
+     */
+    _rankByRelevance(videos, query) {
+        const queryWords = query.toLowerCase().split(/\s+/);
+
+        const scored = videos.map(v => {
+            let score = 0;
+            const titleLower = (v.title || '').toLowerCase();
+
+            // Title relevance — how many query words appear in the title
+            for (const word of queryWords) {
+                if (word.length < 2) continue;
+                if (titleLower.includes(word)) score += 15;
+            }
+
+            // Exact phrase match in title — big bonus
+            if (titleLower.includes(query.toLowerCase())) score += 30;
+
+            // View count — logarithmic scoring (popular = more relevant)
+            if (v.views) {
+                score += Math.min(Math.log10(v.views + 1) * 3, 25);
+            }
+
+            // Engagement ratio (likes/views) — quality signal
+            if (v.views && v.likes) {
+                const ratio = v.likes / v.views;
+                score += ratio * 100; // 5% ratio = +5 points
+            }
+
+            // Recency bonus — newer videos get a slight boost
+            if (v.publishedAt) {
+                const ageMs = Date.now() - new Date(v.publishedAt).getTime();
+                const ageDays = ageMs / (1000 * 60 * 60 * 24);
+                if (ageDays < 7) score += 10;       // This week
+                else if (ageDays < 30) score += 5;  // This month
+                else if (ageDays < 365) score += 2; // This year
+            }
+
+            // Penalize live streams (usually less relevant for search)
+            if (v.liveBroadcastContent === 'live') score -= 10;
+
+            // Penalize very short videos (< 1 min) — often clickbait
+            if (v.duration) {
+                const durationStr = v.duration;
+                if (durationStr === '0:00' || durationStr === '0:01') score -= 15;
+            }
+
+            v._relevanceScore = score;
+            return v;
+        });
+
+        // Sort by relevance score (highest first)
+        scored.sort((a, b) => b._relevanceScore - a._relevanceScore);
+
+        // Return top 5
+        return scored.slice(0, 5);
+    }
+
+    /**
+     * Enhance query for better search results
+     * Detects Hindi/Hinglish terms and adds context
+     */
+    _enhanceQuery(query) {
+        const q = query.toLowerCase().trim();
+
+        // Don't enhance already specific queries
+        if (q.length > 50) return query;
+
+        // Map common short/vague queries to better search terms
+        const enhancements = {
+            'song': 'official music video',
+            'gana': 'official music video hindi',
+            'naya gana': 'latest hindi songs',
+            'new song': 'latest music video',
+            'trailer': 'official trailer',
+            'funny': 'funny videos compilation',
+            'comedy': 'comedy videos hindi',
+            'tutorial': 'tutorial complete guide',
+            'how to': 'how to step by step'
+        };
+
+        for (const [key, enhancement] of Object.entries(enhancements)) {
+            if (q.includes(key) && !q.includes(enhancement.split(' ').pop())) {
+                return query + ' ' + enhancement.split(' ').pop();
+            }
+        }
+
+        return query;
     }
 
     _formatResults(videos, query, isGroup) {
@@ -198,6 +370,20 @@ class YouTubeBrain {
         const hrs = Math.floor(seconds / 3600);
         const mins = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
+        if (hrs > 0) return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        return `${mins}:${String(secs).padStart(2, '0')}`;
+    }
+
+    /**
+     * Parse ISO 8601 duration (PT1H2M3S) to human readable format
+     */
+    _parseISO8601Duration(iso) {
+        if (!iso) return '';
+        const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+        if (!match) return '';
+        const hrs = parseInt(match[1] || '0');
+        const mins = parseInt(match[2] || '0');
+        const secs = parseInt(match[3] || '0');
         if (hrs > 0) return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
         return `${mins}:${String(secs).padStart(2, '0')}`;
     }
