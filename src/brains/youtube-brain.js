@@ -184,7 +184,7 @@ class YouTubeBrain {
 
     _cleanQuery(message) {
         let query = message;
-        query = query.replace(/(manthan|bot|bro|bhai|yaar|dude)\s*/gi, '');
+        query = query.replace(/(manthan|bot|bro|bhai|yaar|yarr|dude)\s*/gi, '');
         query = query.replace(/(search|find|show|recommend|suggest|play)\s*(me\s*)?(a\s*)?(youtube\s*)?(video|videos|vid|yt)?\s*(on|for|about|of)?\s*/gi, '');
         query = query.replace(/(can you|could you|please|pls)\s*/gi, '');
         query = query.replace(/[?!.]+$/g, '');

@@ -225,7 +225,7 @@ class SearchBrain {
 
     _cleanQuery(message) {
         let query = message;
-        query = query.replace(/(manthan|bot|bro|dude|bhai|yaar)\s*/gi, '');
+        query = query.replace(/(manthan|bot|bro|dude|bhai|yaar|yarr)\s*/gi, '');
         query = query.replace(/(search|google|look up|find|what is|what's|tell me about|explain)/gi, '');
         query = query.replace(/(please|pls|can you|could you|will you)/gi, '');
         query = query.replace(/[?!.]+/g, '').trim();

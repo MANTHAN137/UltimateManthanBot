@@ -9,31 +9,31 @@ const config = require('../utils/config-loader');
 class SocialBrain {
     constructor() {
         this.greetingVariants = [
-            "yo! what's up? 🤙",
-            "hey! kya scene hai?",
-            "heyy, what's going on?",
-            "hey there! 👋",
-            "ayyy, what's up!",
-            "sup! how's it going?",
-            "heyyy, bolo bolo"
+            "yo yarr! what's up? 🤙",
+            "hey yarr! kya scene hai?",
+            "heyy yarr, what's going on?",
+            "hey there yarr! 👋",
+            "ayyy yarr, what's up!",
+            "sup yarr! how's it going?",
+            "heyyy yarr, bolo bolo"
         ];
 
         this.farewellVariants = [
-            "catch you later! ✌️",
-            "bye! tc 🙏",
-            "cya! take care",
-            "aight, bye! 👋",
-            "peace out ✌️",
-            "later! 🫡"
+            "catch you later yarr! ✌️",
+            "bye yarr! tc 🙏",
+            "cya yarr! take care",
+            "aight, bye yarr! 👋",
+            "peace out yarr ✌️",
+            "later yarr! 🫡"
         ];
 
         this.thanksVariants = [
-            "no worries! 🤙",
-            "anytime! 😊",
-            "haha glad I could help",
-            "welcome welcome 🙏",
-            "np np!",
-            "all good! 👍"
+            "no worries yarr! 🤙",
+            "anytime yarr! 😊",
+            "haha glad I could help yarr",
+            "welcome welcome yarr 🙏",
+            "np np yarr!",
+            "all good yarr! 👍"
         ];
 
         console.log('🤝 Social Brain initialized');
@@ -48,7 +48,7 @@ class SocialBrain {
         // ─── Spam detection ────────────
         if (intent.primary === 'spam') {
             return isGroup ? null : { // Ignore spam in groups
-                response: this._getRandomFrom(["nah I'm good 😂", "lol pass", "not interested bro", "sorry, not clicking any links 😅"]),
+                response: this._getRandomFrom(["nah I'm good yarr 😂", "lol pass", "not interested yarr", "sorry yarr, not clicking any links 😅"]),
                 source: 'social-brain/spam',
                 isQuickResponse: true
             };
@@ -58,10 +58,10 @@ class SocialBrain {
         if (intent.primary === 'birthday') {
             return {
                 response: this._getRandomFrom([
-                    "ayy thanks yaar! 🎂 means a lot!",
-                    "thanks bro! 🎉 appreciate it!",
-                    "haha thanks a lot! 🥳",
-                    "thank youu! 🎂✨"
+                    "ayy thanks yarr! 🎂 means a lot!",
+                    "thanks yarr! 🎉 appreciate it!",
+                    "haha thanks a lot yarr! 🥳",
+                    "thank youu yarr! 🎂✨"
                 ]),
                 source: 'social-brain/birthday',
                 isQuickResponse: true
@@ -104,9 +104,9 @@ class SocialBrain {
         if (intent.primary === 'human_request') {
             return {
                 response: this._getRandomFrom([
-                    "got it! I'll check and get back when I'm free 📱",
-                    "noted! will reply properly soon 🙏",
-                    "acha, let me get back to you on this"
+                    "got it yarr! I'll check and get back when I'm free 📱",
+                    "noted yarr! will reply properly soon 🙏",
+                    "acha yarr, let me get back to you on this"
                 ]),
                 source: 'social-brain/human-request',
                 isQuickResponse: true

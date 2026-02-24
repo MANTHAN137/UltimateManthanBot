@@ -203,7 +203,7 @@ class MemoryStore {
 
     _detectCommunicationStyle(message) {
         const msg = message.toLowerCase();
-        if (/bro|yaar|bhai|dude|man/.test(msg)) return 'casual-friendly';
+        if (/bro|yaar|yarr|bhai|dude|man/.test(msg)) return 'casual-friendly';
         if (/sir|madam|please|kindly|would you/.test(msg)) return 'formal';
         if (/lol|lmao|haha|😂|🤣/.test(msg)) return 'humorous';
         if (/kya|kaise|kyun|matlab|samjha/.test(msg)) return 'hinglish';
