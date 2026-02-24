@@ -323,7 +323,7 @@ async function startBot() {
         }
 
         if (connection === 'close') {
-            latestQR = null;
+            // Don't clear latestQR here — keep it visible on web during reconnects
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             console.log(`❌ Connection closed. Reconnecting: ${shouldReconnect}`);
             if (shouldReconnect) {
